@@ -1,0 +1,36 @@
+package com.bondhub.authservice.model;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.bondhub.common.model.BaseModel;
+import com.bondhub.common.enums.Role;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.MongoId;
+
+import java.util.Set;
+
+@Document("accounts")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class Account extends BaseModel {
+    @EqualsAndHashCode.Include
+    @MongoId
+    String id;
+
+    String phoneNumber;
+    String password;
+
+    String email;
+
+    Set<Role> roles;
+
+    @Builder.Default
+    Boolean enabled = true;
+}

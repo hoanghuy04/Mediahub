@@ -1,0 +1,402 @@
+{
+  "info": {
+    "name": "BondHub Auth Service API",
+    "description": "Authentication endpoints via API Gateway - All routes use /api/* prefix and JWT authentication is handled at the gateway level. Config managed in config-server.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "bondhub-auth-collection",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register New Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.access_token) {",
+                  "        pm.environment.set(\"access_token\", jsonData.data.access_token);",
+                  "        pm.environment.set(\"refresh_token\", jsonData.data.refresh_token);",
+                  "        console.log(\"Tokens saved to environment\");",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"Password123!\",\n  \"phoneNumber\": \"1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Register a new user account. Returns access token and refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login with Phone Number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.access_token) {",
+                  "        pm.environment.set(\"access_token\", jsonData.data.access_token);",
+                  "        pm.environment.set(\"refresh_token\", jsonData.data.refresh_token);",
+                  "        console.log(\"Tokens saved to environment\");",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phoneNumber\": \"1234567890\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login with phone number and password. Returns JWT access token and refresh token."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.access_token) {",
+                  "        pm.environment.set(\"access_token\", jsonData.data.access_token);",
+                  "        console.log(\"New access token saved\");",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Refresh the access token using the refresh token. The refresh token remains the same."
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/validate?token={{access_token}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "validate"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}"
+                }
+              ]
+            },
+            "description": "Validate if a JWT token is valid and not expired. Returns true/false."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for register, login, token refresh, and validation"
+    },
+    {
+      "name": "Protected Endpoints (Examples)",
+      "item": [
+        {
+          "name": "Get Current User (Example)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Example of a protected endpoint. Requires valid JWT token in Authorization header."
+          },
+          "response": []
+        },
+        {
+          "name": "Test Without Token (Should Fail)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me"
+              ]
+            },
+            "description": "Test accessing a protected endpoint without token. Should return 401 Unauthorized."
+          },
+          "response": []
+        }
+      ],
+      "description": "Example protected endpoints that require JWT authentication"
+    },
+    {
+      "name": "Security Test Endpoints",
+      "item": [
+        {
+          "name": "Public Endpoint (No Auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/public",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "public"]
+            },
+            "description": "Public endpoint - accessible without authentication. Tests that SecurityContextFilter allows public paths."
+          },
+          "response": []
+        },
+        {
+          "name": "Authenticated Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/authenticated",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "authenticated"]
+            },
+            "description": "Requires any authenticated user. Returns user info from security context."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Only Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/admin-only",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "admin-only"]
+            },
+            "description": "@PreAuthorize('hasRole(ADMIN)') - Only ADMIN role can access. USER role will get 403."
+          },
+          "response": []
+        },
+        {
+          "name": "User or Admin Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/user-or-admin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "user-or-admin"]
+            },
+            "description": "@PreAuthorize('hasAnyRole(USER, ADMIN)') - Both USER and ADMIN roles can access."
+          },
+          "response": []
+        },
+        {
+          "name": "Who Am I",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/whoami",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "whoami"]
+            },
+            "description": "Returns current authenticated user information from security context."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Profile (Path Variable Auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/users/{{user_id}}/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "users", "{{user_id}}", "profile"]
+            },
+            "description": "@PreAuthorize('#userId == authentication.principal.id') - User can only access their own profile. Set {{user_id}} in environment."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User (Complex Auth)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "users", "{{user_id}}"]
+            },
+            "description": "@PreAuthorize('hasRole(ADMIN) or #userId == authentication.principal.id') - ADMIN can delete anyone, USER can only delete themselves."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Security Headers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/test/security/headers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "test", "security", "headers"]
+            },
+            "description": "Shows all security headers (X-User-Id, X-User-Email, X-User-Roles) passed from gateway to service."
+          },
+          "response": []
+        }
+      ],
+      "description": "Security context filter test endpoints - demonstrates @PreAuthorize, role-based access, and security context functionality"
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}
