@@ -41,8 +41,8 @@ public class I18nTest {
 
     @Test
     public void testDefaultMessage() {
-        // Test with a non-existent locale (should fallback to default English)
+        // Test with a non-existent locale (should fallback to default Vietnamese)
         String message = messageSource.getMessage(ErrorCode.AUTH_UNAUTHENTICATED.getMessageKey(), null, Locale.JAPAN);
-        assertEquals("Authentication failed or not provided", message);
+        assertEquals("Xác thực thất bại hoặc chưa được cung cấp", message);
     }
 }

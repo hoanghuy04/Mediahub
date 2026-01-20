@@ -16,7 +16,7 @@ public class I18nConfig {
     @org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication(type = org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type.SERVLET)
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver localeResolver = new AcceptHeaderLocaleResolver();
-        localeResolver.setDefaultLocale(Locale.ENGLISH);
+        localeResolver.setDefaultLocale(new Locale("vi"));
         return localeResolver;
     }
 
@@ -29,6 +29,7 @@ public class I18nConfig {
             basenames[i] = basenames[i].trim().replace('/', '.');
         }
         messageSource.setBasenames(basenames);
+        messageSource.setFallbackToSystemLocale(false);
         messageSource.setDefaultEncoding("UTF-8");
         return messageSource;
     }
