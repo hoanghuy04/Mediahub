@@ -1,12 +1,23 @@
 package com.bondhub.authservice.service.auth;
 
+import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
 import com.bondhub.authservice.dto.auth.request.LoginRequest;
 import com.bondhub.authservice.dto.auth.request.RefreshRequest;
+import com.bondhub.authservice.dto.auth.request.RegisterInitRequest;
 import com.bondhub.authservice.dto.auth.request.RegisterRequest;
+import com.bondhub.authservice.dto.auth.request.RegisterVerifyRequest;
+import com.bondhub.authservice.dto.auth.request.ResetPasswordRequest;
+import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
+import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
+import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.model.Account;
+import com.bondhub.authservice.model.PendingRegistration;
 import com.bondhub.authservice.repository.AccountRepository;
+import com.bondhub.authservice.repository.PendingRegistrationRepository;
+import com.bondhub.authservice.service.mail.MailService;
+import com.bondhub.authservice.service.otp.OtpService;
 import com.bondhub.authservice.service.token.TokenStoreService;
 import com.bondhub.authservice.util.SecurityUtil;
 import com.bondhub.common.config.JwtProperties;
@@ -32,22 +43,24 @@ import java.util.UUID;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     AccountRepository accountRepository;
+    PendingRegistrationRepository pendingRegistrationRepository;
     PasswordEncoder passwordEncoder;
     JwtUtil jwtUtil;
-    JwtProperties jwtProperties;
     TokenStoreService tokenStoreService;
     SecurityUtil securityUtil;
+    OtpService otpService;
+    MailService mailService;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
-        log.info("Login attempt for phone number: {}, deviceId: {}, type: {}",
-                request.phoneNumber(), request.deviceId(), request.deviceType());
+        log.info("Login attempt for email: {}, deviceId: {}, type: {}",
+                request.email(), request.deviceId(), request.deviceType());
 
-        Account account = accountRepository.findByPhoneNumber(request.phoneNumber())
+        Account account = accountRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AppException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
         if (!passwordEncoder.matches(request.password(), account.getPassword())) {
-            log.warn("Invalid password for phone number: {}", request.phoneNumber());
+            log.warn("Invalid password for email: {}", request.email());
             throw new AppException(ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
@@ -189,6 +202,148 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         return true;
+    }
+
+    @Override
+    public RegisterInitResponse initiateRegistration(RegisterInitRequest request) {
+        log.info("Initiating registration for email: {}", request.email());
+
+        // Step 1: Validate email not already registered
+        if (accountRepository.existsByEmail(request.email())) {
+            throw new AppException(ErrorCode.ACC_EMAIL_ALREADY_USED);
+        }
+
+        // Step 2: Validate phone number if provided
+        if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
+            if (accountRepository.existsByPhoneNumber(request.phoneNumber())) {
+                throw new AppException(ErrorCode.ACC_PHONE_NUMBER_ALREADY_USED);
+            }
+        }
+
+        // Step 3: Generate OTP (cooldown check happens inside)
+        String otp = otpService.generateAndStoreOtp(request.email(), OtpPurpose.REGISTRATION);
+
+        // Step 4: Save pending registration data (password is hashed for security)
+        long now = System.currentTimeMillis();
+        PendingRegistration pendingReg = PendingRegistration.builder()
+                .email(request.email())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .phoneNumber(request.phoneNumber())
+                .createdAt(now)
+                .ttl(300L) // 5 minutes, matches OTP TTL
+                .build();
+        pendingRegistrationRepository.save(pendingReg);
+
+        // Step 5: Send OTP via email (NEVER log the OTP!)
+        mailService.sendOtpEmail(request.email(), otp, "Registration Verification");
+
+        log.info("✅ Registration initiated successfully for: {}", request.email());
+
+        return RegisterInitResponse.of(request.email());
+    }
+
+    @Override
+    public TokenResponse verifyAndCompleteRegistration(
+            RegisterVerifyRequest request, String userAgent, String ipAddress) {
+
+        log.info("Verifying OTP and completing registration for: {}", request.email());
+
+        // Step 1: Validate OTP
+        boolean isValid = otpService.validateOtp(
+                request.email(),
+                request.otp(),
+                OtpPurpose.REGISTRATION);
+
+        if (!isValid) {
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
+
+        // Step 2: Retrieve pending registration data
+        PendingRegistration pendingReg = pendingRegistrationRepository.findById(request.email())
+                .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
+
+        // Step 3: Create verified account
+        Set<Role> defaultRoles = new HashSet<>();
+        defaultRoles.add(Role.USER);
+
+        Account account = Account.builder()
+                .email(pendingReg.getEmail())
+                .password(pendingReg.getPasswordHash()) // Already hashed
+                .phoneNumber(pendingReg.getPhoneNumber())
+                .roles(defaultRoles)
+                .isVerified(true) // Set to true after OTP verification
+                .enabled(true)
+                .build();
+
+        account = accountRepository.save(account);
+
+        // Step 4: Delete pending registration data
+        pendingRegistrationRepository.delete(pendingReg);
+
+        log.info("✅ Account created and verified for: {}", account.getEmail());
+
+        // Step 5: Auto-login - generate tokens
+        return generateFullTokenResponse(
+                account,
+                "web-device", // Default device ID
+                DeviceType.WEB,
+                userAgent,
+                ipAddress);
+    }
+
+    @Override
+    public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request) {
+        log.info("Initiating password reset for email: {}", request.email());
+
+        // Check if account exists
+        if (!accountRepository.existsByEmail(request.email())) {
+            // To prevent email enumeration, we might want to return success even if not
+            // found.
+            // But for this implementation, giving specific error for better UX.
+            throw new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND);
+        }
+
+        // Generate OTP (cooldown check inside)
+        String otp = otpService.generateAndStoreOtp(request.email(), OtpPurpose.PASSWORD_RESET);
+
+        // Send Email
+        mailService.sendPasswordResetOtpEmail(request.email(), otp);
+
+        log.info("✅ Password reset OTP sent to: {}", request.email());
+        return ForgotPasswordResponse.of(request.email());
+    }
+
+    @Override
+    public TokenResponse resetPassword(ResetPasswordRequest request, String userAgent, String ipAddress) {
+        log.info("Reseting password for email: {}", request.email());
+
+        // Validate OTP
+        boolean isValid = otpService.validateOtp(
+                request.email(),
+                request.otp(),
+                OtpPurpose.PASSWORD_RESET);
+
+        if (!isValid) {
+            throw new AppException(ErrorCode.OTP_INVALID);
+        }
+
+        // Fetch Account
+        Account account = accountRepository.findByEmail(request.email())
+                .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
+
+        // Update Password
+        account.setPassword(passwordEncoder.encode(request.newPassword()));
+        account = accountRepository.save(account);
+
+        log.info("✅ Password successfully reset for: {}", account.getEmail());
+
+        // Auto-login (generate tokens)
+        return generateFullTokenResponse(
+                account,
+                "web-device", // Default or from request if available
+                DeviceType.WEB,
+                userAgent,
+                ipAddress);
     }
 
     private TokenResponse generateFullTokenResponse(Account account, String deviceId, DeviceType deviceType,

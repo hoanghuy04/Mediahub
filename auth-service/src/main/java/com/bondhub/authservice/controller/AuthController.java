@@ -1,9 +1,15 @@
 package com.bondhub.authservice.controller;
 
+import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
 import com.bondhub.authservice.dto.auth.request.LoginRequest;
 import com.bondhub.authservice.dto.auth.request.LogoutRequest;
 import com.bondhub.authservice.dto.auth.request.RefreshRequest;
+import com.bondhub.authservice.dto.auth.request.RegisterInitRequest;
 import com.bondhub.authservice.dto.auth.request.RegisterRequest;
+import com.bondhub.authservice.dto.auth.request.RegisterVerifyRequest;
+import com.bondhub.authservice.dto.auth.request.ResetPasswordRequest;
+import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
+import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.service.auth.AuthenticationService;
 import com.bondhub.authservice.util.CookieUtil;
@@ -39,7 +45,7 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
-        log.info("POST /auth/login - Login for phone: {}, deviceId: {}", request.phoneNumber(), request.deviceId());
+        log.info("POST /auth/login - Login for email: {}, deviceId: {}", request.email(), request.deviceId());
 
         String userAgent = HttpRequestUtil.getUserAgent(httpRequest);
         String ipAddress = HttpRequestUtil.getClientIpAddress(httpRequest);
@@ -54,11 +60,96 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(tokenResponse));
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<TokenResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("POST /auth/register - Registration for email: {}", request.email());
+    /**
+     * OLD SINGLE-STEP REGISTRATION (deprecated, use two-step flow instead)
+     */
+    @Deprecated
+    @PostMapping("/register/old")
+    public ResponseEntity<ApiResponse<TokenResponse>> registerOld(@Valid @RequestBody RegisterRequest request) {
+        log.info("POST /auth/register/old - Registration for email: {}", request.email());
         TokenResponse tokenResponse = authenticationService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(tokenResponse));
+    }
+
+    /**
+     * TWO-STEP REGISTRATION - Step 1: Initiate registration
+     * Validates email, generates OTP, sends email
+     */
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<RegisterInitResponse>> initiateRegistration(
+            @Valid @RequestBody RegisterInitRequest request) {
+
+        log.info("POST /auth/register - Initiating registration for email: {}", request.email());
+
+        RegisterInitResponse response = authenticationService.initiateRegistration(request);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * TWO-STEP REGISTRATION - Step 2: Verify OTP and complete registration
+     * Creates account and auto-login
+     */
+    @PostMapping("/register/verify")
+    public ResponseEntity<ApiResponse<TokenResponse>> verifyAndCompleteRegistration(
+            @Valid @RequestBody RegisterVerifyRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        log.info("POST /auth/register/verify - Verifying OTP for email: {}", request.email());
+
+        String userAgent = HttpRequestUtil.getUserAgent(httpRequest);
+        String ipAddress = HttpRequestUtil.getClientIpAddress(httpRequest);
+
+        TokenResponse tokenResponse = authenticationService.verifyAndCompleteRegistration(
+                request, userAgent, ipAddress);
+
+        // Set refresh token in HttpOnly cookie
+        ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(
+                tokenResponse.refreshToken());
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(tokenResponse));
+    }
+
+    /**
+     * FORGOT PASSWORD - Step 1: Request password reset
+     * Generates OTP and sends email
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<ForgotPasswordResponse>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+        log.info("POST /auth/forgot-password - for email: {}", request.email());
+
+        ForgotPasswordResponse response = authenticationService.forgotPassword(request);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * RESET PASSWORD - Step 2: Verify OTP and set new password
+     * Updates password and auto-logins
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<TokenResponse>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        log.info("POST /auth/reset-password - for email: {}", request.email());
+
+        String userAgent = HttpRequestUtil.getUserAgent(httpRequest);
+        String ipAddress = HttpRequestUtil.getClientIpAddress(httpRequest);
+
+        TokenResponse tokenResponse = authenticationService.resetPassword(request, userAgent, ipAddress);
+
+        // Set refresh token in HttpOnly cookie
+        ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(
+                tokenResponse.refreshToken());
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(ApiResponse.success(tokenResponse));
     }
 
     @PostMapping("/refresh")

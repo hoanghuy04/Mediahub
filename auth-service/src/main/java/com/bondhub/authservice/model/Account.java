@@ -24,12 +24,15 @@ public class Account extends BaseModel {
     @MongoId
     String id;
 
+    String email;
     String phoneNumber;
+
     String password;
 
-    String email;
-
     Set<Role> roles;
+
+    @Builder.Default
+    Boolean isVerified = false;
 
     @Builder.Default
     Boolean enabled = true;

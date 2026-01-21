@@ -29,6 +29,14 @@ public enum ErrorCode {
         ACC_IS_OAUTH(HttpStatus.CONFLICT, 2007, "error.acc.is.oauth"),
         CIC_IS_EXIST(HttpStatus.CONFLICT, 2008, "error.cic.is.exist"),
 
+        // OTP errors (20xx)
+        OTP_COOLDOWN_ACTIVE(HttpStatus.TOO_MANY_REQUESTS, 2009, "error.otp.cooldown.active"),
+        OTP_MAX_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, 2010, "error.otp.max.attempts.exceeded"),
+        OTP_EXPIRED(HttpStatus.BAD_REQUEST, 2011, "error.otp.expired"),
+        OTP_INVALID(HttpStatus.BAD_REQUEST, 2012, "error.otp.invalid"),
+        OTP_PURPOSE_MISMATCH(HttpStatus.BAD_REQUEST, 2013, "error.otp.purpose.mismatch"),
+        OTP_NOT_FOUND(HttpStatus.NOT_FOUND, 2014, "error.otp.not.found"),
+
         // Role and permission errors (21xx)
         ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, 2101, "error.role.not.found"),
         PERM_NOT_FOUND(HttpStatus.NOT_FOUND, 2102, "error.perm.not.found"),
