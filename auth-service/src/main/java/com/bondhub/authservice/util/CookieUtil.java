@@ -24,12 +24,11 @@ public class CookieUtil {
     @Value("${app.cookie.path:/}")
     private String path;
 
-    public ResponseCookie createRefreshTokenCookie(String refreshToken, long maxAgeSeconds) {
+    public ResponseCookie createRefreshTokenCookie(String refreshToken) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, refreshToken)
                 .httpOnly(true)
                 .secure(secure)
                 .path(path)
-                .maxAge(maxAgeSeconds)
                 .sameSite(sameSite)
                 .build();
     }

@@ -168,7 +168,7 @@ management:
       probes:
         enabled: true
     gateway:
-      enabled: true
+      access: unrestricted
   prometheus:
     metrics:
       export:
@@ -189,9 +189,6 @@ logging:
     com.bondhub.gateway: DEBUG
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/api-gateway.log
   logback:

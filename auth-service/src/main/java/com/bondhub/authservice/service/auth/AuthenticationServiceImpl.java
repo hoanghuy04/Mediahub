@@ -90,7 +90,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         String accessToken = jwtUtil.generateAccessToken(account.getId(), account.getEmail(), account.getRoles(),
                 sessionId);
 
-        return TokenResponse.of(accessToken, null, jwtProperties.getAccessTokenExpiration());
+        return TokenResponse.of(accessToken, null);
     }
 
     @Override
@@ -214,6 +214,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 ipAddress,
                 refreshExpirationMs / 1000);
 
-        return TokenResponse.of(accessToken, refreshToken, refreshExpirationMs / 1000);
+        return TokenResponse.of(accessToken, refreshToken);
     }
 }
