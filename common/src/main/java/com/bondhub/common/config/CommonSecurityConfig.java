@@ -34,6 +34,9 @@ public class CommonSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
+                    // Permit internal service-to-service communication
+                    auth.requestMatchers("/internal/**").permitAll();
+                    
                     // Permit base endpoints
                     auth.requestMatchers("/").permitAll();
                     auth.requestMatchers("/error", "/actuator/**").permitAll();

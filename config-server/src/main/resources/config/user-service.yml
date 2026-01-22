@@ -10,7 +10,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${MONGODB_URI_USERS:mongodb://root:rootpassword123@127.0.0.1:27017/bondhub_user?authSource=admin}
+      uri: ${MONGODB_URI_USERS}
       auto-index-creation: true
       uuid-representation: standard
 
@@ -18,7 +18,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30

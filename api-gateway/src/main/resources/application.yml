@@ -3,7 +3,7 @@ spring:
     name: api-gateway
   main:
     allow-bean-definition-overriding: true
-    web-application-type: reactive  # Force reactive mode for Gateway
+    web-application-type: reactive # Force reactive mode for Gateway
   config:
     import: "configserver:http://localhost:8888"
   cloud:
@@ -28,11 +28,11 @@ management:
         include: health,info,env
 
 # Environment variable defaults
-EUREKA_SERVER_URL: http://localhost:8761/eureka/
-CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:4200
+EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
 
 # JWT Configuration (fallback - should be configured in config-server)
 jwt:
-  secret: ${JWT_SECRET:TGhpcyBpcyBhIHRlbXBvcmFyeSBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBvbmx5IC0gcGxlYXNlIHVzZSBhIHNlY3VyZSBzZWNyZXQgaW4gcHJvZHVjdGlvbg==}
-  access-token-expiration: 3600000  # 1 hour
-  refresh-token-expiration: 604800000  # 7 days
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION}
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION}

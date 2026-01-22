@@ -21,7 +21,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -55,4 +55,3 @@ logging:
     name: logs/config-server.log
     max-size: 10MB
     max-history: 30
-
