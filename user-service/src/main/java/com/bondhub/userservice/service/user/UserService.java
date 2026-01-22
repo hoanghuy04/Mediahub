@@ -11,6 +11,8 @@ public interface UserService {
 
     UserResponse getUserById(String id);
 
+    UserResponse getUserByAccountId(String accountId);
+
     List<UserResponse> getAllUsers();
 
     UserResponse updateUser(String id, UserUpdateRequest request);

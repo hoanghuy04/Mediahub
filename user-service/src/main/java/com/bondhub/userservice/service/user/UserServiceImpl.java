@@ -41,6 +41,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public UserResponse getUserByAccountId(String accountId) {
+        log.info("Fetching user with account id: {}", accountId);
+        User user = userRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        return userMapper.toUserResponse(user);
+    }
+
+    @Override
     public List<UserResponse> getAllUsers() {
         log.info("Fetching all users");
         return userRepository.findAll().stream()

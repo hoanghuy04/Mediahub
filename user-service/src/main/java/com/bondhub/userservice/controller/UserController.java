@@ -36,6 +36,12 @@ public class UserController {
         return ApiResponse.success(userService.updateUser(id, request));
     }
 
+    @GetMapping("/me")
+    public ApiResponse<UserResponse> getMyProfile(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.bondhub.common.security.UserPrincipal principal) {
+        return ApiResponse.success(userService.getUserByAccountId(principal.getId()));
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
