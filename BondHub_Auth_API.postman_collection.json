@@ -35,18 +35,12 @@
               }
             ],
             "body": {
-              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"John Doe\",\n  \"phoneNumber\": \"1234567890\"\n}"
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"fullName\": \"John Doe\",\n  \"phoneNumber\": \"1234567890\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
             },
             "description": "Step 1 of Registration. Validates input, generates OTP, and sends email. Returns confirmation message."
           },
@@ -86,15 +80,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/register/verify",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register",
-                "verify"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register", "verify"]
             },
             "description": "Step 2 of Registration. Verifies OTP, creates account, and returns tokens."
           },
@@ -117,14 +104,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/forgot-password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "forgot-password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "forgot-password"]
             },
             "description": "Initiate password reset. Sends OTP to email."
           },
@@ -164,14 +145,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/reset-password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "reset-password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "reset-password"]
             },
             "description": "Complete password reset. Verifies OTP, updates password, and returns new tokens."
           },
@@ -211,14 +186,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
             },
             "description": "Login with phone number and password. Returns JWT access token and refresh token."
           },
@@ -257,14 +226,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/refresh",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "refresh"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
             },
             "description": "Refresh the access token using the refresh token. The refresh token remains the same."
           },
@@ -286,14 +249,8 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "logout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
             },
             "description": "Logout user using refresh token."
           },
@@ -306,14 +263,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/auth/validate?token={{access_token}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "validate"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "validate"],
               "query": [
                 {
                   "key": "token",
@@ -344,14 +295,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/users/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "me"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
             },
             "description": "Example of a protected endpoint. Requires valid JWT token in Authorization header."
           },
@@ -364,14 +309,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/users/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "me"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
             },
             "description": "Test accessing a protected endpoint without token. Should return 401 Unauthorized."
           },
@@ -491,7 +430,15 @@
             "url": {
               "raw": "{{base_url}}/api/users/test/security/users/{{user_id}}/profile",
               "host": ["{{base_url}}"],
-              "path": ["api", "users", "test", "security", "users", "{{user_id}}", "profile"]
+              "path": [
+                "api",
+                "users",
+                "test",
+                "security",
+                "users",
+                "{{user_id}}",
+                "profile"
+              ]
             },
             "description": "@PreAuthorize('#userId == authentication.principal.id') - User can only access their own profile. Set {{user_id}} in environment."
           },
@@ -511,7 +458,14 @@
             "url": {
               "raw": "{{base_url}}/api/users/test/security/users/{{user_id}}",
               "host": ["{{base_url}}"],
-              "path": ["api", "users", "test", "security", "users", "{{user_id}}"]
+              "path": [
+                "api",
+                "users",
+                "test",
+                "security",
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "@PreAuthorize('hasRole(ADMIN) or #userId == authentication.principal.id') - ADMIN can delete anyone, USER can only delete themselves."
           },
@@ -550,14 +504,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/users/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "me"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
             },
             "description": "Trigger an error (401 Unauthorized) without specifying a language. Should return English message by default."
           },
@@ -576,14 +524,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/users/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "me"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
             },
             "description": "Trigger an error (401 Unauthorized) with Accept-Language: vi. Should return Vietnamese message."
           },

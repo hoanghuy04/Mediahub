@@ -11,7 +11,7 @@ public interface UserService {
 
     UserResponse getUserById(String id);
 
-    UserResponse getUserByAccountId(String accountId);
+    UserResponse getMyUserWithAccountInfo();
 
     List<UserResponse> getAllUsers();
 

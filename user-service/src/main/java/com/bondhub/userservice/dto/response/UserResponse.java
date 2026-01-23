@@ -17,9 +17,5 @@ public class UserResponse {
     LocalDate dob;
     String bio;
     Gender gender;
-    String accountId;
-    String email;
-    String phoneNumber;
-    String role;
     AccountResponse accountInfo;
 }

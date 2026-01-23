@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record ResetPasswordRequest(
-        @NotBlank(message = "Email is required") @Email(message = "Email must be valid") String email,
+        @NotBlank(message = "{validation.email.required}") @Email(message = "{validation.email.invalid}") String email,
 
-        @NotBlank(message = "OTP is required") @Pattern(regexp = "^[0-9]{6}$", message = "OTP must be 6 digits") String otp,
+        @NotBlank(message = "{validation.otp.required}") @Pattern(regexp = "^[0-9]{6}$", message = "{validation.otp.pattern}") String otp,
 
-        @NotBlank(message = "New password is required") @Size(min = 8, message = "Password must be at least 8 characters") String newPassword) {
+        @NotBlank(message = "{validation.newPassword.required}") @Size(min = 8, message = "{validation.password.size}") String newPassword) {
 }

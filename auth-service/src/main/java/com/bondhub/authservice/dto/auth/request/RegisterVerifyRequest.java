@@ -8,11 +8,11 @@ import jakarta.validation.constraints.Pattern;
  * Request DTO for verifying OTP and completing registration (Step 2)
  */
 public record RegisterVerifyRequest(
-        @NotBlank(message = "Email is required") @Email(message = "Email must be valid")
+        @NotBlank(message = "{validation.email.required}") @Email(message = "{validation.email.invalid}")
         String email,
 
-        @NotBlank(message = "OTP is required")
-        @Pattern(regexp = "^[0-9]{6}$", message = "OTP must be 6 digits")
+        @NotBlank(message = "{validation.otp.required}")
+        @Pattern(regexp = "^[0-9]{6}$", message = "{validation.otp.pattern}")
         String otp
 ) {
 }

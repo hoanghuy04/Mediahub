@@ -8,11 +8,11 @@ import jakarta.validation.constraints.NotNull;
  * Login request DTO
  */
 public record LoginRequest(
-        @NotBlank(message = "Email is required") @jakarta.validation.constraints.Email(message = "Invalid email format") String email,
+        @NotBlank(message = "{validation.email.required}") @jakarta.validation.constraints.Email(message = "{validation.email.invalid}") String email,
 
-        @NotBlank(message = "Password is required") String password,
+        @NotBlank(message = "{validation.password.required}") String password,
 
-        @NotBlank(message = "Device ID is required") String deviceId,
+        @NotBlank(message = "{validation.deviceId.required}") String deviceId,
 
-        @NotNull(message = "Device type is required") DeviceType deviceType) {
+        @NotNull(message = "{validation.deviceType.required}") DeviceType deviceType) {
 }

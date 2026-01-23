@@ -32,6 +32,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +54,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     OtpService otpService;
     MailService mailService;
     UserServiceClient userServiceClient;
+    MessageSource messageSource;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -197,6 +200,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public RegisterInitResponse initiateRegistration(RegisterInitRequest request) {
         log.info("Initiating registration for email: {}", request.email());
 
+        // Validate password and confirm password match
+        if (!request.password().equals(request.confirmPassword())) {
+            throw new AppException(ErrorCode.ACC_PASSWORD_MISMATCH);
+        }
+
         if (accountRepository.existsByEmail(request.email())) {
             throw new AppException(ErrorCode.ACC_EMAIL_ALREADY_USED);
         }
@@ -224,7 +232,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         log.info("✅ Registration initiated successfully for: {}", request.email());
 
-        return RegisterInitResponse.of(request.email());
+        String message = messageSource.getMessage(
+                "auth.register.otp.sent",
+                null,
+                LocaleContextHolder.getLocale());
+        return RegisterInitResponse.of(message, request.email());
     }
 
     @Override
@@ -245,24 +257,21 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         PendingRegistration pendingReg = pendingRegistrationRepository.findById(request.email())
                 .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
 
-        // Step 3: Create verified account
         Account account = Account.builder()
                 .email(pendingReg.getEmail())
                 .password(pendingReg.getPasswordHash())
                 .phoneNumber(pendingReg.getPhoneNumber())
                 .role(Role.USER)
-                .isVerified(true) // Set to true after OTP verification
+                .isVerified(true)
                 .enabled(true)
                 .build();
 
         account = accountRepository.save(account);
 
-        // Step 4: Delete pending registration data
         pendingRegistrationRepository.delete(pendingReg);
 
         log.info("✅ Account created and verified for: {}", account.getEmail());
 
-        // Create User Profile in User Service
         try {
             ApiResponse<UserResponse> user = userServiceClient.createUser(UserCreateRequest.builder()
                     .accountId(account.getId())
@@ -277,9 +286,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         } catch (Exception e) {
             log.error("❌ Failed to create user profile for account: {}", account.getId(), e);
-            // We don't rollback account creation here as they are separate services
-            // In a production system, this should be handled via event sourcing or
-            // distributed transaction
+
         }
 
         return generateFullTokenResponse(
@@ -295,9 +302,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         log.info("Initiating password reset for email: {}", request.email());
 
         if (!accountRepository.existsByEmail(request.email())) {
-            // To prevent email enumeration, we might want to return success even if not
-            // found.
-            // But for this implementation, giving specific error for better UX.
+
             throw new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND);
         }
 
@@ -311,7 +316,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public TokenResponse resetPassword(ResetPasswordRequest request, String userAgent, String ipAddress) {
-        log.info("Reseting password for email: {}", request.email());
+        log.info("Resetting password for email: {}", request.email());
 
         boolean isValid = otpService.validateOtp(
                 request.email(),

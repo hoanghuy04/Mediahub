@@ -3,6 +3,7 @@ package com.bondhub.userservice.service.user;
 import com.bondhub.common.dto.ApiResponse;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
+import com.bondhub.common.utils.ServiceSecurityUtils;
 import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.dto.request.UserCreateRequest;
 import com.bondhub.userservice.dto.request.UserUpdateRequest;
@@ -48,7 +49,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse getUserByAccountId(String accountId) {
+    public UserResponse getMyUserWithAccountInfo() {
+
+        String accountId = ServiceSecurityUtils.getCurrentAccountId();
+
         log.info("Fetching user with account id: {}", accountId);
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -74,7 +78,7 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching all users");
         return userRepository.findAll().stream()
                 .map(userMapper::toUserResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

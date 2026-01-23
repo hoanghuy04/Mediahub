@@ -37,9 +37,8 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<UserResponse> getMyProfile(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.bondhub.common.security.UserPrincipal principal) {
-        return ApiResponse.success(userService.getUserByAccountId(principal.getId()));
+    public ApiResponse<UserResponse> getMyProfile() {
+        return ApiResponse.success(userService.getMyUserWithAccountInfo());
     }
 
     @DeleteMapping("/{id}")
