@@ -25,6 +25,25 @@ spring:
           max-idle: 8
           min-idle: 0
 
+  # Kafka Configuration for Auth Service
+  kafka:
+    # Producer configuration for authentication events
+    producer:
+      client-id: auth-service-producer
+      retries: 3
+      properties:
+        max.in.flight.requests.per.connection: 5
+
+    # Consumer configuration (if needed for user sync events)
+    consumer:
+      group-id: auth-service-group
+      client-id: auth-service-consumer
+
+    # Listener configuration
+    listener:
+      concurrency: 2
+      ack-mode: manual
+
 app:
   cookie:
     secure: ${COOKIE_SECURE} # Set to true in production

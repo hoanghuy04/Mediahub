@@ -16,6 +16,9 @@ import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.model.Account;
+import com.bondhub.common.event.AccountRegisteredEvent;
+import com.bondhub.common.event.EventType;
+import com.bondhub.common.event.OutboxEventPublisher;
 import com.bondhub.authservice.model.redis.PendingRegistration;
 import com.bondhub.authservice.repository.AccountRepository;
 import com.bondhub.authservice.repository.redis.PendingRegistrationRepository;
@@ -55,6 +58,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     MailService mailService;
     UserServiceClient userServiceClient;
     MessageSource messageSource;
+    OutboxEventPublisher outboxEventPublisher;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -272,21 +276,28 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         log.info("✅ Account created and verified for: {}", account.getEmail());
 
+        // Publish account registered event via outbox pattern
         try {
-            ApiResponse<UserResponse> user = userServiceClient.createUser(UserCreateRequest.builder()
+            AccountRegisteredEvent event = AccountRegisteredEvent.builder()
                     .accountId(account.getId())
+                    .email(account.getEmail())
                     .fullName(pendingReg.getFullName())
-                    .build());
+                    .phoneNumber(account.getPhoneNumber())
+                    .timestamp(System.currentTimeMillis())
+                    .build();
 
-            if (user != null && user.data() != null) {
-                log.info("✅ User profile created for account: {}", user.data().getAccountId());
-            } else {
-                log.warn("⚠️ User profile creation response was null or empty for account: {}", account.getId());
-            }
+            outboxEventPublisher.saveAndPublish(
+                    account.getId(),
+                    "Account",
+                    EventType.ACCOUNT_REGISTERED,
+                    event
+            );
+
+            log.info("✅ Account registered event published for accountId: {}", account.getId());
 
         } catch (Exception e) {
+            log.error("❌ Failed to publish account registered event for accountId: {}", account.getId(), e);
             log.error("❌ Failed to create user profile for account: {}", account.getId(), e);
-
         }
 
         return generateFullTokenResponse(
