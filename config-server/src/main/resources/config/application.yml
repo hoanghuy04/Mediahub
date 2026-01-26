@@ -1,7 +1,7 @@
 # Common Kafka Configuration for All Services
 spring:
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 
     # Common Producer Configuration
     producer:
@@ -37,31 +37,19 @@ spring:
     # Admin Configuration
     admin:
       properties:
-        bootstrap.servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+        bootstrap.servers: ${KAFKA_BOOTSTRAP_SERVERS}
 
-# Kafka Topics Configuration
+# Kafka Topics Configuration (managed by KafkaTopicConfig class)
 kafka:
   topics:
-    # Authentication & User Events
-    user-registered: user.registered
-    user-updated: user.updated
-    user-deleted: user.deleted
-    user-login: user.login
-    user-logout: user.logout
-    password-reset: user.password-reset
-
-    # Message Events
-    message-sent: message.sent
-    message-delivered: message.delivered
-    message-read: message.read
-    message-deleted: message.deleted
-
-    # Notification Events
-    notification-created: notification.created
-    notification-sent: notification.sent
-    notification-failed: notification.failed
-    notification-delivered: notification.delivered
-
-    # System Events
-    system-alert: system.alert
-    audit-log: audit.log
+    account-events:
+      registered: account.registered
+      updated: account.updated
+      deleted: account.deleted
+      verified: account.verified
+      enabled: account.enabled
+      disabled: account.disabled
+    user-events:
+      created: user.created
+      updated: user.updated
+      deleted: user.deleted
