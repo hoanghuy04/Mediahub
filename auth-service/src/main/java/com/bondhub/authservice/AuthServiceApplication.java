@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFeignClients
 @EnableScheduling
 @ComponentScan(basePackages = { "com.bondhub.authservice", "com.bondhub.common" })
-@EnableMongoRepositories(basePackages = { "com.bondhub.authservice.repository", "com.bondhub.common.event" })
+@EnableMongoRepositories(basePackages = { "com.bondhub.authservice.repository", "com.bondhub.common.repository" })
 public class AuthServiceApplication {
 
     public static void main(String[] args) {

@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @SpringBootApplication
 @EnableFeignClients
 @ComponentScan(basePackages = { "com.bondhub.notificationservices", "com.bondhub.common"})
-@EnableMongoRepositories(basePackages = { "com.bondhub.notificationservices.repository", "com.bondhub.common.event" })
+@EnableMongoRepositories(basePackages = { "com.bondhub.notificationservices.repository", "com.bondhub.common.repository" })
 public class NotificationServicesApplication {
 
     public static void main(String[] args) {
