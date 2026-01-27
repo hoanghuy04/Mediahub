@@ -71,8 +71,9 @@ BondHub implements a **centralized security architecture** using JWT (JSON Web T
 - **Purpose**: JWT configuration binding
 - **Properties**:
   - `jwt.secret` - Secret key for signing tokens
-  - `jwt.access-token-expiration` - Access token lifetime (default: 1 hour)
-  - `jwt.refresh-token-expiration` - Refresh token lifetime (default: 7 days)
+  - `jwt.access.expiration` - Access token lifetime (default: 1 hour)
+  - `jwt.refresh.expiration-web` - Refresh token lifetime for web (default: 7 days)
+  - `jwt.refresh.expiration-mobile` - Refresh token lifetime for mobile (default: 1 year)
 
 #### `Role` (common/enums/Role.java)
 - **Purpose**: Type-safe role enumeration
@@ -321,8 +322,11 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration: 3600000
-  refresh-token-expiration: 604800000
+  access:
+    expiration: 3600000
+  refresh:
+    expiration-web: 604800000
+    expiration-mobile: 31536000000
 ```
 
 ### Service Configuration (user-service/application.yml)
