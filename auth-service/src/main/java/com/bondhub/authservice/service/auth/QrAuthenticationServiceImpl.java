@@ -51,7 +51,8 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         QrSession session = QrSession.builder()
                 .id(qrId)
                 .status(QrSessionStatus.PENDING)
-                .ttl(qrProperties.getExpirationSeconds())
+                .ttl(qrProperties.getExpirationSeconds() + 60)
+                .expiresAt(expiresAt)
                 .deviceId(deviceId)
                 .userAgent(userAgent)
                 .ipAddress(ipAddress)
@@ -73,6 +74,10 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         String qrId = extractQrId(request.qrContent());
         QrSession session = qrSessionRepository.findById(qrId)
                 .orElseThrow(() -> new AppException(ErrorCode.QR_SESSION_EXPIRED));
+
+        if (session.getExpiresAt() != null && session.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.QR_SESSION_EXPIRED);
+        }
 
         if (session.getStatus() != QrSessionStatus.PENDING) {
             throw new AppException(ErrorCode.QR_SESSION_INVALID_STATE);
@@ -107,6 +112,10 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         String qrId = extractQrId(request.qrContent());
         QrSession session = qrSessionRepository.findById(qrId)
                 .orElseThrow(() -> new AppException(ErrorCode.QR_SESSION_EXPIRED));
+
+        if (session.getExpiresAt() != null && session.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.QR_SESSION_EXPIRED);
+        }
 
         if (session.getStatus() != QrSessionStatus.SCANNED) {
             throw new AppException(ErrorCode.QR_SESSION_INVALID_STATE);
@@ -161,6 +170,10 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         String qrId = extractQrId(request.qrContent());
         QrSession session = qrSessionRepository.findById(qrId)
                 .orElseThrow(() -> new AppException(ErrorCode.QR_SESSION_EXPIRED));
+
+        if (session.getExpiresAt() != null && session.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.QR_SESSION_EXPIRED);
+        }
 
         if (session.getStatus() != QrSessionStatus.SCANNED) {
             throw new AppException(ErrorCode.QR_SESSION_INVALID_STATE);
