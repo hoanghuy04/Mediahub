@@ -5,18 +5,41 @@ spring:
   application:
     name: notification-service
 
+  messages:
+    basename: i18n/messages, i18n/messages-notification
+
   # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI_NOTIFICATIONS:mongodb://root:rootpassword123@127.0.0.1:27017/bondhub_messages?authSource=admin}
+      uri: ${MONGODB_URI_NOTIFICATIONS}
       auto-index-creation: true
       uuid-representation: standard
+
+  # Kafka Configuration for Notification Service
+  kafka:
+    # Producer configuration for notification status events
+    producer:
+      client-id: notification-service-producer
+      retries: 3
+
+    # Consumer configuration for incoming notification requests
+    consumer:
+      group-id: notification-service-group
+      client-id: notification-service-consumer
+      max-poll-records: 50
+      properties:
+        max.poll.interval.ms: 600000 # 10 minutes for processing notifications
+
+    # Listener configuration
+    listener:
+      concurrency: 2
+      ack-mode: manual
 
 # Eureka Client Configuration
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
@@ -61,9 +84,6 @@ logging:
     org.springframework.web: INFO
     org.springframework.data.mongodb: DEBUG
     org.springframework.mail: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/notification-service.log
     max-size: 10MB
@@ -94,3 +114,10 @@ resilience4j:
     instances:
       notificationService:
         timeout-duration: 5s
+
+# BondHub Security Configuration
+bondhub:
+  security:
+    gateway-auth:
+      enabled: true
+    public-endpoints: []

@@ -8,6 +8,12 @@ spring:
   # Cloud Gateway Configuration
   cloud:
     gateway:
+      httpclient:
+        server:
+          webflux:
+            httpclient:
+              connect-timeout: 5000
+              response-timeout: 45000
       server:
         webflux:
           discovery:
@@ -16,6 +22,20 @@ spring:
               lower-case-service-id: true
           routes:
             # Auth Service Routes (Public - no JWT required)
+            - id: auth-service-qr-wait
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/qr/wait/**
+              metadata:
+                response-timeout: 45000
+                connect-timeout: 5000
+              filters:
+                - RewritePath=/api/auth/(?<segment>.*), /auth/${segment}
+                - name: CircuitBreaker
+                  args:
+                    name: qrWaitServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/qr-wait
+
             - id: auth-service
               uri: lb://auth-service
               predicates:
@@ -67,7 +87,7 @@ spring:
           globalcors:
             cors-configurations:
               "[/**]":
-                allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200}
+                allowed-origins: ${CORS_ALLOWED_ORIGINS}
                 allowed-methods:
                   - GET
                   - POST
@@ -85,17 +105,27 @@ spring:
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 5000ms
+
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:TGhpcyBpcyBhIHRlbXBvcmFyeSBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBvbmx5IC0gcGxlYXNlIHVzZSBhIHNlY3VyZSBzZWNyZXQgaW4gcHJvZHVjdGlvbg==}
-  access-token-expiration: 3600000  # 1 hour in milliseconds
-  refresh-token-expiration: 604800000  # 7 days in milliseconds
+  secret: ${JWT_SECRET}
+  access:
+    expiration: 3600000
+  refresh:
+    expiration-web: 1209600000
+    expiration-mobile: 31536000000
 
 # Eureka Client Configuration
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
@@ -126,6 +156,8 @@ resilience4j:
         base-config: default
       authServiceCircuitBreaker:
         base-config: default
+      qrWaitServiceCircuitBreaker:
+        base-config: default
       messageServiceCircuitBreaker:
         base-config: default
       notificationServiceCircuitBreaker:
@@ -140,6 +172,8 @@ resilience4j:
         base-config: default
       authServiceCircuitBreaker:
         base-config: default
+      qrWaitServiceCircuitBreaker:
+        timeout-duration: ${GATEWAY_QR_TIMEOUT_MS}ms
       messageServiceCircuitBreaker:
         base-config: default
       notificationServiceCircuitBreaker:
@@ -158,7 +192,7 @@ management:
       probes:
         enabled: true
     gateway:
-      enabled: true
+      access: unrestricted
   prometheus:
     metrics:
       export:
@@ -179,9 +213,6 @@ logging:
     com.bondhub.gateway: DEBUG
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/api-gateway.log
   logback:

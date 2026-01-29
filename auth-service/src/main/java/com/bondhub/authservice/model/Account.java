@@ -8,8 +8,6 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.util.Set;
-
 @Document("accounts")
 @Getter
 @Setter
@@ -24,12 +22,15 @@ public class Account extends BaseModel {
     @MongoId
     String id;
 
+    String email;
     String phoneNumber;
+
     String password;
 
-    String email;
+    Role role;
 
-    Set<Role> roles;
+    @Builder.Default
+    Boolean isVerified = false;
 
     @Builder.Default
     Boolean enabled = true;

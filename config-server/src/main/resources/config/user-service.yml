@@ -5,17 +5,40 @@ spring:
   application:
     name: user-service
 
-    data:
-      mongodb:
-        uri: ${MONGODB_URI_USERS:mongodb://root:rootpassword123@127.0.0.1:27017/bondhub_user?authSource=admin}
-        auto-index-creation: true
-        uuid-representation: standard
+  messages:
+    basename: i18n/messages, i18n/messages-user
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI_USERS}
+      auto-index-creation: true
+      uuid-representation: standard
+
+  # Kafka Configuration for User Service
+  kafka:
+    # Producer configuration for user events
+    producer:
+      client-id: user-service-producer
+      retries: 3
+      properties:
+        max.in.flight.requests.per.connection: 5
+
+    # Consumer configuration for incoming events (if needed)
+    consumer:
+      group-id: user-service-group
+      client-id: user-service-consumer
+      max-poll-records: 100
+
+    # Listener configuration
+    listener:
+      concurrency: 2
+      ack-mode: manual
 
 # Eureka Client Configuration
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
@@ -61,9 +84,6 @@ logging:
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/user-service.log
     max-size: 10MB
@@ -94,3 +114,11 @@ resilience4j:
     instances:
       userService:
         timeout-duration: 5s
+
+# BondHub Security Configuration
+bondhub:
+  security:
+    gateway-auth:
+      enabled: true
+    public-endpoints:
+      - /users

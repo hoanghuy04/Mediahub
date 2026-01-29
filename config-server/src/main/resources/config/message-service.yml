@@ -5,18 +5,41 @@ spring:
   application:
     name: message-service
 
+  messages:
+    basename: i18n/messages, i18n/messages-message
+
   # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI_MESSAGES:mongodb://root:rootpassword123@127.0.0.1:27017/bondhub_messages?authSource=admin}
+      uri: ${MONGODB_URI_MESSAGES}
       auto-index-creation: true
       uuid-representation: standard
+
+  # Kafka Configuration for Message Service
+  kafka:
+    # Producer configuration for outgoing message events
+    producer:
+      client-id: message-service-producer
+      retries: 3
+      properties:
+        max.in.flight.requests.per.connection: 5
+
+    # Consumer configuration for incoming events
+    consumer:
+      group-id: message-service-group
+      client-id: message-service-consumer
+      max-poll-records: 100
+
+    # Listener configuration
+    listener:
+      concurrency: 3
+      ack-mode: manual
 
 # Eureka Client Configuration
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_SERVER_URL}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
@@ -60,9 +83,6 @@ logging:
     com.bondhub.messageservice: DEBUG
     org.springframework.web: INFO
     org.springframework.data.mongodb: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
     name: logs/message-service.log
     max-size: 10MB
@@ -93,3 +113,10 @@ resilience4j:
     instances:
       messageService:
         timeout-duration: 5s
+
+# BondHub Security Configuration
+bondhub:
+  security:
+    gateway-auth:
+      enabled: true
+    public-endpoints: []
