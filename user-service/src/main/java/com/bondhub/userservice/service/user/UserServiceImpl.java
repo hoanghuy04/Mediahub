@@ -100,7 +100,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse updateUser(String id, UserUpdateRequest request) {
+    public UserProfileResponse updateUser(String id, UserUpdateRequest request) {
         log.info("Updating user with id: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -108,8 +108,18 @@ public class UserServiceImpl implements UserService {
         userMapper.updateUserFromRequest(user, request);
         user = userRepository.save(user);
 
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(user.getAccountId());
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for updated user: {}", user.getAccountId(), e);
+        }
+
         log.info("User updated successfully with id: {}", id);
-        return userMapper.toUserResponse(user);
+        return userProfileMapper.toUserProfileResponse(user, accountResponse);
     }
 
     @Override
