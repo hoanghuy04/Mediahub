@@ -14,6 +14,5 @@ public record UserResponse(
     AccountResponse accountInfo,
     String avatar,
     String background,
-    Double backgroundY,
-    Double backgroundZoom
+    Double backgroundY
 ) {}

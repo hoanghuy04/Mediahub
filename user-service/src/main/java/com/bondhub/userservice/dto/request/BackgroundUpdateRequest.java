@@ -6,6 +6,5 @@ import lombok.Builder;
 @Builder
 public record BackgroundUpdateRequest(
     MultipartFile file,
-    Double y,
-    Double zoom
+    Double y
 ) {}

@@ -7,6 +7,5 @@ import lombok.Builder;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserImageResponse(
     String url,
-    Double y,
-    Double zoom
+    Double y
 ) {}

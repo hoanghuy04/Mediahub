@@ -34,8 +34,6 @@ public class User extends BaseModel {
     Set<String> pinnedConversations;
 
     String avatar;
-    
     String background;
     Double backgroundY;
-    Double backgroundZoom;
 }

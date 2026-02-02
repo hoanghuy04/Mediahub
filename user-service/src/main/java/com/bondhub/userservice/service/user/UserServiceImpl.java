@@ -161,7 +161,6 @@ public class UserServiceImpl implements UserService {
                 .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
                 .background(response.background() != null ? baseUrl + response.background() : null)
                 .backgroundY(response.backgroundY())
-                .backgroundZoom(response.backgroundZoom())
                 .build();
     }
 
@@ -215,7 +214,6 @@ public class UserServiceImpl implements UserService {
             String key = response.data().key();
             user.setBackground(key);
             user.setBackgroundY(request.y());
-            user.setBackgroundZoom(request.zoom());
             userRepository.save(user);
 
             if (oldBackgroundKey != null && !oldBackgroundKey.isEmpty()) {
@@ -233,6 +231,26 @@ public class UserServiceImpl implements UserService {
         }
 
         throw new RuntimeException("Failed to upload background");
+    }
+
+    @Override
+    public UserImageResponse updateBackgroundPosition(Double y) {
+        String accountId = securityUtil.getCurrentAccountId();
+        log.info("Updating background position for user: {} to y: {}", accountId, y);
+
+        User user = userRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getBackground() == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        user.setBackgroundY(y);
+        userRepository.save(user);
+
+        log.info("Background position updated successfully for user: {}", accountId);
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        return userMapper.toBackgroundResponse(user, baseUrl);
     }
 
     @Override

@@ -31,5 +31,7 @@ public interface UserService {
 
     UserImageResponse updateBackground(BackgroundUpdateRequest request);
 
+    UserImageResponse updateBackgroundPosition(Double y);
+
     void deleteUser(String id);
 }

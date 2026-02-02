@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -57,14 +58,26 @@ public class UserController {
 
     @PatchMapping("/profile/avatar")
     public ResponseEntity<ApiResponse<UserImageResponse>> updateAvatar(
-            @ModelAttribute AvatarUpdateRequest request) {
+            @RequestPart("file") MultipartFile file) {
+        AvatarUpdateRequest request = AvatarUpdateRequest.builder().file(file).build();
         return ResponseEntity.ok(ApiResponse.success(userService.updateAvatar(request)));
     }
 
     @PatchMapping("/profile/background")
     public ResponseEntity<ApiResponse<UserImageResponse>> updateBackground(
-            @ModelAttribute BackgroundUpdateRequest request) {
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("y") Double y) {
+        BackgroundUpdateRequest request = BackgroundUpdateRequest.builder()
+                .file(file)
+                .y(y)
+                .build();
         return ResponseEntity.ok(ApiResponse.success(userService.updateBackground(request)));
+    }
+
+    @PatchMapping("/profile/background/position")
+    public ResponseEntity<ApiResponse<UserImageResponse>> updateBackgroundPosition(
+            @RequestParam Double y) {
+        return ResponseEntity.ok(ApiResponse.success(userService.updateBackgroundPosition(y)));
     }
 
     @DeleteMapping("/{id}")

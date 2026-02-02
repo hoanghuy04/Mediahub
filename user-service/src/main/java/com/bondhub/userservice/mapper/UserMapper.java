@@ -20,12 +20,10 @@ public interface UserMapper {
 
     @Mapping(target = "url", expression = "java(baseUrl + user.getAvatar())")
     @Mapping(target = "y", ignore = true)
-    @Mapping(target = "zoom", ignore = true)
     UserImageResponse toAvatarResponse(User user, String baseUrl);
 
     @Mapping(target = "url", expression = "java(baseUrl + user.getBackground())")
     @Mapping(target = "y", source = "user.backgroundY")
-    @Mapping(target = "zoom", source = "user.backgroundZoom")
     UserImageResponse toBackgroundResponse(User user, String baseUrl);
 
     void updateUserFromRequest(@MappingTarget User user, UserUpdateRequest request);
