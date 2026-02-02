@@ -113,15 +113,7 @@ public class UserServiceImpl implements UserService {
                     accountId, e);
         }
 
-        UserProfileResponse response = userProfileMapper.toUserProfileResponse(user, accountResponse);
-        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
-        if (response.getAvatar() != null) {
-            response.setAvatar(baseUrl + response.getAvatar());
-        }
-        if (response.getBackground() != null) {
-            response.setBackground(baseUrl + response.getBackground());
-        }
-        return response;
+        return getUserProfileResponseWithUrl(user, accountResponse);
     }
 
     @Override
@@ -154,6 +146,10 @@ public class UserServiceImpl implements UserService {
         }
 
         log.info("User profile updated successfully for account: {}", accountId);
+        return getUserProfileResponseWithUrl(user, accountResponse);
+    }
+
+    private UserProfileResponse getUserProfileResponseWithUrl(User user, AccountResponse accountResponse) {
         UserProfileResponse response = userProfileMapper.toUserProfileResponse(user, accountResponse);
         String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
         if (response.getAvatar() != null) {
@@ -173,12 +169,24 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        String oldAvatarKey = user.getAvatar();
+
         ApiResponse<FileUploadResponse> response = fileServiceClient
                 .uploadFile(file);
         if (response != null && response.data() != null) {
             String key = response.data().getKey();
             user.setAvatar(key);
             userRepository.save(user);
+
+            if (oldAvatarKey != null && !oldAvatarKey.isEmpty()) {
+                try {
+                    fileServiceClient.deleteFile(oldAvatarKey);
+                    log.info("Old avatar deleted successfully: {}", oldAvatarKey);
+                } catch (Exception e) {
+                    log.error("Failed to delete old avatar: {}", oldAvatarKey, e);
+                }
+            }
+
             log.info("Avatar updated successfully for user: {}", accountId);
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return baseUrl + key;
@@ -195,12 +203,24 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
+        String oldBackgroundKey = user.getBackground();
+
         ApiResponse<FileUploadResponse> response = fileServiceClient
                 .uploadFile(file);
         if (response != null && response.data() != null) {
             String key = response.data().getKey();
             user.setBackground(key);
             userRepository.save(user);
+
+            if (oldBackgroundKey != null && !oldBackgroundKey.isEmpty()) {
+                try {
+                    fileServiceClient.deleteFile(oldBackgroundKey);
+                    log.info("Old background deleted successfully: {}", oldBackgroundKey);
+                } catch (Exception e) {
+                    log.error("Failed to delete old background: {}", oldBackgroundKey, e);
+                }
+            }
+
             log.info("Background updated successfully for user: {}", accountId);
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return baseUrl + key;

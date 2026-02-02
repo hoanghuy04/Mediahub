@@ -32,4 +32,10 @@ public class FileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
                 .body(data);
     }
+
+    @DeleteMapping("/{key}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String key) {
+        fileService.deleteFile(key);
+        return ResponseEntity.ok(ApiResponse.successWithoutData());
+    }
 }

@@ -9,4 +9,6 @@ public interface FileService {
     FileUploadResponse uploadFile(MultipartFile file) throws IOException;
 
     byte[] downloadFile(String key);
+
+    void deleteFile(String key);
 }

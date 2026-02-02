@@ -46,6 +46,7 @@ public class FileServiceImpl implements FileService {
                                 .build();
         }
 
+        @Override
         public void deleteFile(String key) {
                 s3Client.deleteObject(software.amazon.awssdk.services.s3.model.DeleteObjectRequest.builder()
                                 .bucket(bucketName)
