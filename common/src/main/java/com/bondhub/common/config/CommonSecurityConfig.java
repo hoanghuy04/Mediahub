@@ -2,6 +2,7 @@ package com.bondhub.common.config;
 
 import com.bondhub.common.security.SecurityContextFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Common Security Configuration
  * Provides security context setup for servlet-based services behind API Gateway
  * Enable this by setting: bondhub.security.gateway-auth.enabled=true
+ * Only activates if Spring Security is on the classpath
  */
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)

@@ -5,6 +5,10 @@ spring:
   application:
     name: api-gateway
 
+  # Disable Kafka Related For Gateway
+  kafka:
+    enabled: false
+
   # Cloud Gateway Configuration
   cloud:
     gateway:
@@ -144,20 +148,34 @@ resilience4j:
     configs:
       default:
         register-health-indicator: true
+        sliding-window-type: COUNT_BASED
         sliding-window-size: 10
         minimum-number-of-calls: 5
         permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
         wait-duration-in-open-state: 30s
         failure-rate-threshold: 50
         slow-call-rate-threshold: 100
         slow-call-duration-threshold: 3s
+        record-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
     instances:
       userServiceCircuitBreaker:
         base-config: default
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 45s
       authServiceCircuitBreaker:
         base-config: default
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 20s
       qrWaitServiceCircuitBreaker:
         base-config: default
+        failure-rate-threshold: 70
+        wait-duration-in-open-state: 60s
       messageServiceCircuitBreaker:
         base-config: default
       notificationServiceCircuitBreaker:
@@ -167,6 +185,7 @@ resilience4j:
     configs:
       default:
         timeout-duration: 5s
+        cancel-running-future: true
     instances:
       userServiceCircuitBreaker:
         base-config: default
@@ -178,6 +197,74 @@ resilience4j:
         base-config: default
       notificationServiceCircuitBreaker:
         base-config: default
+
+  # Retry Configuration
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+    instances:
+      userServiceRetry:
+        base-config: default
+      authServiceRetry:
+        base-config: default
+        max-attempts: 2
+      messageServiceRetry:
+        base-config: default
+      notificationServiceRetry:
+        base-config: default
+        max-attempts: 2
+
+  # Rate Limiter Configuration
+  ratelimiter:
+    configs:
+      default:
+        register-health-indicator: true
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+    instances:
+      userServiceRateLimiter:
+        base-config: default
+        limit-for-period: 50
+      authServiceRateLimiter:
+        base-config: default
+        limit-for-period: 200
+      messageServiceRateLimiter:
+        base-config: default
+        limit-for-period: 80
+      notificationServiceRateLimiter:
+        base-config: default
+        limit-for-period: 60
+
+  # Bulkhead Configuration
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 25
+        max-wait-duration: 0ms
+    instances:
+      userServiceBulkhead:
+        base-config: default
+        max-concurrent-calls: 20
+      authServiceBulkhead:
+        base-config: default
+        max-concurrent-calls: 30
+      messageServiceBulkhead:
+        base-config: default
+        max-concurrent-calls: 15
+      notificationServiceBulkhead:
+        base-config: default
+        max-concurrent-calls: 15
 
 # Management and Monitoring
 management:
