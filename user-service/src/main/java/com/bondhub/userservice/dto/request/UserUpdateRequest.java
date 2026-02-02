@@ -14,10 +14,10 @@ import java.time.LocalDate;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserUpdateRequest {
-    @NotBlank(message = "Tên hiển thị không được để trống")
+    @NotBlank(message = "{user.update.fullNameRequired}")
     String fullName;
 
-    @PastOrPresent(message = "Ngày sinh không được lớn hơn ngày hiện tại")
+    @PastOrPresent(message = "{user.update.dobInvalid}")
     LocalDate dob;
 
     String bio;

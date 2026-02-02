@@ -180,7 +180,8 @@ public class UserServiceImpl implements UserService {
             user.setAvatar(key);
             userRepository.save(user);
             log.info("Avatar updated successfully for user: {}", accountId);
-            return key;
+            String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+            return baseUrl + key;
         }
 
         throw new RuntimeException("Failed to upload avatar");
@@ -201,7 +202,8 @@ public class UserServiceImpl implements UserService {
             user.setBackground(key);
             userRepository.save(user);
             log.info("Background updated successfully for user: {}", accountId);
-            return key;
+            String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+            return baseUrl + key;
         }
 
         throw new RuntimeException("Failed to upload background");
