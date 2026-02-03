@@ -1,7 +1,9 @@
 package com.bondhub.gateway.controller;
 
 import com.bondhub.common.dto.ApiResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -12,6 +14,7 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -21,18 +24,22 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/fallback")
+@RequiredArgsConstructor
 public class FallbackController {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private final MessageSource messageSource;
 
     @RequestMapping("/qr-wait")
     public Mono<ResponseEntity<ApiResponse<Map<String, Object>>>> qrWaitFallback(ServerHttpRequest request) {
         log.warn("QR Wait service fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, Object> data = new HashMap<>();
-        data.put("status", "PENDING");
-        data.put("message", "Service is temporarily unavailable. Your request is being processed.");
+        data.put("status", messageSource.getMessage("fallback.qr.wait.status", null, locale));
+        data.put("message", messageSource.getMessage("fallback.qr.wait.message", null, locale));
         data.put("timestamp", LocalDateTime.now().format(FORMATTER));
         
         return Mono.just(ResponseEntity.ok(ApiResponse.success(data)));
@@ -43,14 +50,19 @@ public class FallbackController {
         log.error("Auth service fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = createErrorDetails(
-                "Authentication Service",
-                "The authentication service is temporarily unavailable. Please try again in a few moments.",
-                request
+                messageSource.getMessage("fallback.auth.service.name", null, locale),
+                messageSource.getMessage("fallback.auth.service.message", null, locale),
+                request,
+                locale
         );
         
+        String errorTitle = messageSource.getMessage("fallback.auth.service.unavailable", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error(503, "Authentication Service Unavailable", errorDetails)));
+                .body(ApiResponse.error(503, errorTitle, errorDetails)));
     }
 
     @RequestMapping("/user-service")
@@ -58,14 +70,19 @@ public class FallbackController {
         log.error("User service fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = createErrorDetails(
-                "User Service",
-                "The user service is temporarily unavailable. Please try again later.",
-                request
+                messageSource.getMessage("fallback.user.service.name", null, locale),
+                messageSource.getMessage("fallback.user.service.message", null, locale),
+                request,
+                locale
         );
         
+        String errorTitle = messageSource.getMessage("fallback.user.service.unavailable", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error(503, "User Service Unavailable", errorDetails)));
+                .body(ApiResponse.error(503, errorTitle, errorDetails)));
     }
 
     @RequestMapping("/message-service")
@@ -73,14 +90,19 @@ public class FallbackController {
         log.error("Message service fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = createErrorDetails(
-                "Message Service",
-                "The messaging service is temporarily unavailable. Your messages are safe and will be accessible shortly.",
-                request
+                messageSource.getMessage("fallback.message.service.name", null, locale),
+                messageSource.getMessage("fallback.message.service.message", null, locale),
+                request,
+                locale
         );
         
+        String errorTitle = messageSource.getMessage("fallback.message.service.unavailable", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error(503, "Message Service Unavailable", errorDetails)));
+                .body(ApiResponse.error(503, errorTitle, errorDetails)));
     }
 
     @RequestMapping("/notification-service")
@@ -88,14 +110,19 @@ public class FallbackController {
         log.error("Notification service fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = createErrorDetails(
-                "Notification Service",
-                "The notification service is temporarily unavailable. Notifications will be delivered once service is restored.",
-                request
+                messageSource.getMessage("fallback.notification.service.name", null, locale),
+                messageSource.getMessage("fallback.notification.service.message", null, locale),
+                request,
+                locale
         );
         
+        String errorTitle = messageSource.getMessage("fallback.notification.service.unavailable", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error(503, "Notification Service Unavailable", errorDetails)));
+                .body(ApiResponse.error(503, errorTitle, errorDetails)));
     }
 
     /**
@@ -106,14 +133,19 @@ public class FallbackController {
         log.error("General fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = createErrorDetails(
-                "Gateway",
-                "The requested service is temporarily unavailable. Please try again later.",
-                request
+                messageSource.getMessage("fallback.general.service.name", null, locale),
+                messageSource.getMessage("fallback.general.message", null, locale),
+                request,
+                locale
         );
         
+        String errorTitle = messageSource.getMessage("fallback.general.unavailable", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(ApiResponse.error(503, "Service Unavailable", errorDetails)));
+                .body(ApiResponse.error(503, errorTitle, errorDetails)));
     }
 
     /**
@@ -124,24 +156,39 @@ public class FallbackController {
         log.error("Timeout fallback triggered for request: {} {}", 
                 request.getMethod(), request.getPath());
         
+        Locale locale = getLocaleFromRequest(request);
+        
         Map<String, String> errorDetails = new HashMap<>();
-        errorDetails.put("service", "Downstream Service");
-        errorDetails.put("reason", "Request timeout");
-        errorDetails.put("message", "The request took too long to complete. Please try again with a simpler request or contact support if the issue persists.");
+        errorDetails.put("service", messageSource.getMessage("fallback.timeout.service.name", null, locale));
+        errorDetails.put("reason", messageSource.getMessage("fallback.timeout.reason", null, locale));
+        errorDetails.put("message", messageSource.getMessage("fallback.timeout.message", null, locale));
         errorDetails.put("timestamp", LocalDateTime.now().format(FORMATTER));
         errorDetails.put("path", request.getPath().toString());
         
+        String errorTitle = messageSource.getMessage("fallback.timeout.error", null, locale);
+        
         return Mono.just(ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT)
-                .body(ApiResponse.error(504, "Request Timeout", errorDetails)));
+                .body(ApiResponse.error(504, errorTitle, errorDetails)));
     }
 
-    private Map<String, String> createErrorDetails(String serviceName, String message, ServerHttpRequest request) {
+    private Map<String, String> createErrorDetails(String serviceName, String message, ServerHttpRequest request, Locale locale) {
         Map<String, String> details = new HashMap<>();
         details.put("service", serviceName);
         details.put("message", message);
         details.put("timestamp", LocalDateTime.now().format(FORMATTER));
         details.put("path", request.getPath().toString());
-        details.put("suggestion", "Please retry your request. If the problem persists, contact support.");
+        details.put("suggestion", messageSource.getMessage("fallback.suggestion", null, locale));
         return details;
+    }
+
+    /**
+     * Extract locale from request Accept-Language header
+     * Defaults to Vietnamese if header is not present
+     */
+    private Locale getLocaleFromRequest(ServerHttpRequest request) {
+        return request.getHeaders().getAcceptLanguageAsLocales()
+                .stream()
+                .findFirst()
+                .orElse(new Locale("vi"));
     }
 }
