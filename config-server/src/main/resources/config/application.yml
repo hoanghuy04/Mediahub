@@ -167,10 +167,9 @@ resilience4j:
         timeout-duration: 5s
         cancel-running-future: true
 
-# ==================== MONGODB DEFAULT CONFIGURATION ====================
-
-# ==================== BONDHUB SECURITY CONFIGURATION ====================
 bondhub:
   security:
     gateway-auth:
-      enabled: true
+      enabled: false
+
+

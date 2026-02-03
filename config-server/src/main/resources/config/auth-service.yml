@@ -98,6 +98,22 @@ otp:
   max-attempts: 5 # Maximum validation attempts before OTP is deleted
   cooldown-seconds: 60 # Cooldown between OTP generation requests (1 minute)
 
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  show-actuator: false
+
+# Security Configuration - Auth service uses its own SecurityConfig, not CommonSecurityConfig
+bondhub:
+  security:
+    gateway-auth:
+      enabled: false # Disable CommonSecurityConfig for auth-service
+
 # QR Configuration
 qr:
   expiration-seconds: ${QR_EXPIRATION_SECONDS}
