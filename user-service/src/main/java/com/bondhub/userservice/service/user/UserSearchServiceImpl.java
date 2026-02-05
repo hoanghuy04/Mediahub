@@ -2,6 +2,7 @@ package com.bondhub.userservice.service.user;
 
 import com.bondhub.common.dto.PageResponse;
 import com.bondhub.common.dto.client.userservice.user.response.UserSummaryResponse;
+import com.bondhub.common.enums.Role;
 import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.userservice.mapper.UserMapper;
 import com.bondhub.userservice.model.elasticsearch.UserIndex;
@@ -64,6 +65,10 @@ public class UserSearchServiceImpl implements UserSearchService {
                                 .value(currentAccountId)
                         ));
                     }
+                    b.must(m -> m.term(t -> t
+                            .field("role")
+                            .value(Role.USER.name())
+                    ));
                     return b;
                 }))
                 .withPageable(unsortedPageable)

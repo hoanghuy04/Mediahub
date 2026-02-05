@@ -3,6 +3,7 @@ package com.bondhub.userservice.service.user;
 import com.bondhub.common.dto.ApiResponse;
 import com.bondhub.common.dto.client.fileservice.FileUploadResponse;
 import com.bondhub.common.dto.client.userservice.user.response.UserSummaryResponse;
+import com.bondhub.common.enums.Role;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
 import com.bondhub.common.utils.S3Util;
@@ -11,6 +12,7 @@ import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.client.FileServiceClient;
 import com.bondhub.userservice.dto.request.UserCreateRequest;
 import com.bondhub.userservice.dto.request.UserUpdateRequest;
+import com.bondhub.userservice.dto.request.UserIndexRequest;
 import com.bondhub.userservice.dto.request.AvatarUpdateRequest;
 import com.bondhub.userservice.dto.request.BackgroundUpdateRequest;
 import com.bondhub.userservice.dto.response.AccountResponse;
@@ -58,8 +60,7 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("User created successfully with id: {}", user.getId());
 
-        // Sync to Elasticsearch
-        syncUserToIndex(user, null);
+        syncUserToIndex(user, null, null);
 
         return userMapper.toUserResponse(user);
     }
@@ -151,8 +152,7 @@ public class UserServiceImpl implements UserService {
 
         log.info("User profile updated successfully for account: {}", accountId);
 
-        // Sync to Elasticsearch
-        syncUserToIndex(user, accountResponse != null ? accountResponse.phoneNumber() : null);
+        syncUserToIndex(user, accountResponse != null ? accountResponse.phoneNumber() : null, null);
 
         return getUserProfileResponseWithUrl(user, accountResponse);
     }
@@ -203,8 +203,7 @@ public class UserServiceImpl implements UserService {
 
             log.info("Avatar updated successfully for user: {}", accountId);
 
-            // Sync to Elasticsearch
-            syncUserToIndex(user, null);
+            syncUserToIndex(user, null, null);
 
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return userMapper.toAvatarResponse(user, baseUrl);
@@ -286,20 +285,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void indexUserToElasticsearch(String userId, String phoneNumber) {
-        log.info("Indexing user to Elasticsearch: userId={}, phoneNumber={}", userId, phoneNumber);
-        User user = userRepository.findById(userId)
+    public void indexUserToElasticsearch(UserIndexRequest request) {
+        log.info("Indexing user to Elasticsearch: userId={}, phoneNumber={}, role={}", 
+                request.userId(), request.phoneNumber(), request.role());
+        User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        syncUserToIndex(user, phoneNumber);
+        syncUserToIndex(user, request.phoneNumber(), request.role());
     }
 
-    private void syncUserToIndex(User user, String phoneNumber) {
+    private void syncUserToIndex(User user, String phoneNumber, Role role) {
         try {
             UserIndex userIndex = UserIndex.builder()
                     .id(user.getId())
                     .fullName(user.getFullName())
                     .phoneNumber(phoneNumber)
                     .accountId(user.getAccountId())
+                    .role(role.name())
                     .avatar(user.getAvatar())
                     .build();
             userSearchService.saveToToIndex(userIndex);

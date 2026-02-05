@@ -192,23 +192,7 @@ public class AccountSeederServiceImpl implements AccountSeederService {
 
             adminAccount = accountRepository.save(adminAccount);
             log.info("👑 Admin account created: {}", adminEmail);
-
-            AccountRegisteredEvent event = AccountRegisteredEvent.builder()
-                    .accountId(adminAccount.getId())
-                    .email(adminAccount.getEmail())
-                    .fullName("System Admin")
-                    .phoneNumber(adminAccount.getPhoneNumber())
-                    .timestamp(System.currentTimeMillis())
-                    .build();
-
-            outboxEventPublisher.saveAndPublish(
-                    adminAccount.getId(),
-                    "Account",
-                    EventType.ACCOUNT_REGISTERED,
-                    event
-            );
-
-            log.info("📤 Admin event published");
+            log.info("ℹ️ Admin account does not trigger user creation event (admin-only account)");
             return 1;
 
         } catch (Exception e) {

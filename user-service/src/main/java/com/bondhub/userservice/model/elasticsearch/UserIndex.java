@@ -27,6 +27,9 @@ public class UserIndex {
     @Field(type = FieldType.Keyword)
     String accountId;
 
+    @Field(type = FieldType.Keyword)
+    String role;
+
     @Field(type = FieldType.Keyword, index = false)
     String avatar;
 }
