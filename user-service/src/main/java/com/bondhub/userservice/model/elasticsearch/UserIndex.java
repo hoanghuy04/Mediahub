@@ -7,6 +7,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
+import java.time.LocalDateTime;
+
 @Document(indexName = "users")
 @Setting(settingPath = "elasticsearch/es-setting.json")
 @Builder
@@ -32,4 +34,7 @@ public class UserIndex {
 
     @Field(type = FieldType.Keyword, index = false)
     String avatar;
+
+    @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second_millis)
+    LocalDateTime createdAt;
 }

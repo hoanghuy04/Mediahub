@@ -14,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import com.bondhub.common.dto.SearchRequest;
+import com.bondhub.common.utils.EsQueryBuilder;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHitSupport;
@@ -42,41 +44,29 @@ public class UserSearchServiceImpl implements UserSearchService {
 
         String currentAccountId = securityUtil.getCurrentAccountId();
 
-        Pageable unsortedPageable = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.unsorted());
-
-        NativeQuery query = NativeQuery.builder()
-                .withQuery(q -> q.bool(b -> {
-                    b.should(s -> s.match(m -> m
-                            .field("fullName")
-                            .query(keyword)
-                            .fuzziness("1")
-                    ));
-                    b.should(s -> s.term(t -> t
-                            .field("phoneNumber")
-                            .value(keyword)
-                    ));
-                    b.minimumShouldMatch("1");
-                    if (currentAccountId != null) {
-                        b.mustNot(mn -> mn.term(t -> t
-                                .field("accountId")
-                                .value(currentAccountId)
-                        ));
-                    }
-                    b.must(m -> m.term(t -> t
-                            .field("role")
-                            .value(Role.USER.name())
-                    ));
-                    return b;
-                }))
-                .withPageable(unsortedPageable)
+        SearchRequest request = SearchRequest.builder()
+                .searchTerm(keyword)
+                .searchFields(List.of("fullName", "phoneNumber"))
+                .fuzziness("1")
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
                 .build();
+
+        NativeQuery query = EsQueryBuilder.buildNativeQuery(
+                request,
+                "fullName",
+                builder -> {
+                    if (currentAccountId != null) {
+                        builder.mustNot(mn -> mn.term(t -> t.field("accountId").value(currentAccountId)));
+                    }
+                    builder.must(m -> m.term(t -> t.field("role").value(Role.USER.name())));
+                }
+        );
+
         log.info("Searching users for keyword: [{}] (Excluding accountId: {})", keyword, currentAccountId);
 
         SearchHits<UserIndex> searchHits = elasticsearchOperations.search(query, UserIndex.class);
-        SearchPage<UserIndex> page = SearchHitSupport.searchPageFor(searchHits, unsortedPageable);
+        SearchPage<UserIndex> page = SearchHitSupport.searchPageFor(searchHits, query.getPageable());
 
         return PageResponse.fromPage(page, hit -> userMapper.toUserSummaryResponse(hit.getContent()));
     }
