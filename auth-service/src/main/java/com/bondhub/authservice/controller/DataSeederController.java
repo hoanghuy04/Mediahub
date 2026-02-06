@@ -14,11 +14,11 @@ import java.util.Map;
 @RequestMapping("/auth/internal/seed")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("isAuthenticated()")
 public class DataSeederController {
 
     private final AccountSeederService accountSeederService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/accounts")
     public ResponseEntity<ApiResponse<Map<String, Object>>> seedAccounts(
             @RequestParam(defaultValue = "10") int count) {

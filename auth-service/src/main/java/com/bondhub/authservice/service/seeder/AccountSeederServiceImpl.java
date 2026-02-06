@@ -84,8 +84,6 @@ public class AccountSeederServiceImpl implements AccountSeederService {
         int skipped = 0;
         Random random = new Random();
 
-        created += createAdminAccount();
-
         int startIndex = findNextAvailableIndex();
         log.info("📊 Starting from testuser{}", startIndex);
 
@@ -172,34 +170,6 @@ public class AccountSeederServiceImpl implements AccountSeederService {
         return index;
     }
 
-    private int createAdminAccount() {
-        String adminEmail = "admin@bondhub.com";
-
-        try {
-            if (accountRepository.existsByEmail(adminEmail)) {
-                log.info("👤 Admin account already exists: {}", adminEmail);
-                return 0;
-            }
-
-            Account adminAccount = Account.builder()
-                    .email(adminEmail)
-                    .password(passwordEncoder.encode("Admin@123"))
-                    .phoneNumber("0900000000")
-                    .role(Role.ADMIN)
-                    .isVerified(true)
-                    .enabled(true)
-                    .build();
-
-            adminAccount = accountRepository.save(adminAccount);
-            log.info("👑 Admin account created: {}", adminEmail);
-            log.info("ℹ️ Admin account does not trigger user creation event (admin-only account)");
-            return 1;
-
-        } catch (Exception e) {
-            log.error("❌ Failed to create admin account", e);
-            return 0;
-        }
-    }
 
     /**
      * Apply fuzzy variations lên tên có sẵn
