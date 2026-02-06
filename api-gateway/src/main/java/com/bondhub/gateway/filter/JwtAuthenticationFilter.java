@@ -17,8 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.Set;
-
 @Component
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -59,7 +57,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     }
 
                     try {
-                        String userId = jwtUtil.extractUserId(token);
+                        String userId = jwtUtil.extractAccountId(token);
                         String email = jwtUtil.extractEmail(token);
                         String role = jwtUtil.extractRole(token);
                         String jti = jwtUtil.extractJti(token);

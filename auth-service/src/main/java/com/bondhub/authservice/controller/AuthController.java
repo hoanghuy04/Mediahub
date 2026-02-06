@@ -1,5 +1,6 @@
 package com.bondhub.authservice.controller;
 
+import com.bondhub.authservice.dto.auth.request.ChangePasswordRequest;
 import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
 import com.bondhub.authservice.dto.auth.request.LoginRequest;
 import com.bondhub.authservice.dto.auth.request.LogoutRequest;
@@ -162,6 +163,22 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(tokenResponse));
     }
 
+    /**
+     * CHANGE PASSWORD - For authenticated users
+     * Updates password without requiring OTP
+     */
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+
+        log.info("POST /auth/change-password - Password change request");
+
+        authenticationService.changePassword(request);
+
+        return ResponseEntity.ok(ApiResponse.successWithoutData());
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<TokenResponse>> refresh(
             @Valid @RequestBody RefreshRequest request,
@@ -211,6 +228,38 @@ public class AuthController {
         // Clear cookie
         ResponseCookie cookie = cookieUtil.clearRefreshTokenCookie();
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/logout-others")
+    public ResponseEntity<ApiResponse<Void>> logoutOtherDevices(
+            @RequestBody(required = false) LogoutRequest request,
+            @CookieValue(value = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String cookieRefreshToken) {
+
+        log.info("POST /auth/logout-others - Logout all other devices request");
+
+        String refreshToken = (request != null && request.refreshToken() != null)
+                ? request.refreshToken()
+                : cookieRefreshToken;
+
+        authenticationService.logoutAllOtherDevices(refreshToken);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/logout-device")
+    public ResponseEntity<ApiResponse<Void>> logoutDevice(
+            @Valid @RequestBody com.bondhub.authservice.dto.auth.request.LogoutDeviceRequest request,
+            @CookieValue(value = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String cookieRefreshToken) {
+
+        log.info("POST /auth/logout-device - Logout specific device request");
+
+        String refreshToken = (request != null && request.refreshToken() != null)
+                ? request.refreshToken()
+                : cookieRefreshToken;
+
+        authenticationService.logoutDevice(request.sessionId(), refreshToken);
 
         return ResponseEntity.ok(ApiResponse.success(null));
     }

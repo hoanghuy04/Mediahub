@@ -115,4 +115,18 @@ public interface DeviceService {
      * @return true if device exists, false otherwise
      */
     boolean existsBySessionId(String sessionId);
+
+    /**
+     * Retrieves all active devices with active sessions for a given account.
+     * <p>
+     * This method returns devices that have valid (non-expired and non-revoked) 
+     * refresh token sessions in Redis. The response includes session details
+     * (issuedAt, expiresAt, isCurrentDevice).
+     * </p>
+     *
+     * @param accountId the account ID to search for, must not be null
+     * @param currentSessionId the current session ID to mark the current device (optional)
+     * @return a list of device response DTOs with session information (may be empty)
+     */
+    List<DeviceResponse> getActiveDevicesWithSessions(String accountId, String currentSessionId);
 }

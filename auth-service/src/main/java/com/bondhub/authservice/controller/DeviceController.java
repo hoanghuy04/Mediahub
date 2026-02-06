@@ -5,6 +5,9 @@ import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
 import com.bondhub.authservice.dto.device.response.DeviceResponse;
 import com.bondhub.authservice.service.device.DeviceService;
 import com.bondhub.common.dto.ApiResponse;
+import com.bondhub.common.utils.JwtUtil;
+import com.bondhub.common.utils.SecurityUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +28,8 @@ import java.util.List;
 public class DeviceController {
 
     DeviceService deviceService;
+    SecurityUtil securityUtil;
+    JwtUtil jwtUtil;
 
     @PostMapping
     public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(@Valid @RequestBody DeviceCreateRequest request) {
@@ -89,5 +95,32 @@ public class DeviceController {
         log.info("REST request to check if device exists by sessionId: {}", sessionId);
         boolean exists = deviceService.existsBySessionId(sessionId);
         return ResponseEntity.ok(ApiResponse.success(exists));
+    }
+
+    @GetMapping("/active-sessions")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> getActiveDevicesWithSessions(
+            HttpServletRequest request) {
+        log.info("REST request to get active devices with sessions");
+        
+        // Get the account ID from the security context
+        String accountId = securityUtil.getCurrentAccountId();
+        
+        // Extract session ID from the JWT token if available
+        String currentSessionId = null;
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                currentSessionId = jwtUtil.extractSessionId(token);
+            } catch (Exception e) {
+                log.warn("Failed to extract sessionId from token: {}", e.getMessage());
+            }
+        }
+        
+        List<DeviceResponse> activeDevices = 
+                deviceService.getActiveDevicesWithSessions(accountId, currentSessionId);
+        
+        return ResponseEntity.ok(ApiResponse.success(activeDevices));
     }
 }

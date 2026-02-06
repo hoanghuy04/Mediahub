@@ -1,6 +1,7 @@
 package com.bondhub.userservice.model;
 
 import com.bondhub.userservice.model.enums.PrivacyLevel;
+import com.bondhub.userservice.model.enums.DobVisibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -58,7 +59,7 @@ public class UserSetting {
     @Data
     public static class PrivacySettings {
         //Personal
-        private boolean showDob = true;
+        private DobVisibility showDob = DobVisibility.FULL_DATE;
         private boolean showActiveStatus = true;
 
         //Text and call

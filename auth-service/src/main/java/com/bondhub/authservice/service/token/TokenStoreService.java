@@ -100,6 +100,15 @@ public interface TokenStoreService {
         int revokeAllUserRefreshSessions(String accountId);
 
         /**
+         * Revoke all refresh sessions for a user EXCEPT the current one
+         *
+         * @param accountId         Account ID
+         * @param excludedSessionId The session ID to keep active
+         * @return List of revoked session IDs
+         */
+        java.util.List<String> revokeAllUserRefreshSessionsExcept(String accountId, String excludedSessionId);
+
+        /**
          * Hash a string using SHA-256
          *
          * @param input Input string

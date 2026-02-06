@@ -185,6 +185,29 @@ public class TokenStoreServiceImpl implements TokenStoreService {
     }
 
     @Override
+    public List<String> revokeAllUserRefreshSessionsExcept(String accountId, String excludedSessionId) {
+        List<RefreshTokenSession> sessions = refreshSessionRepository.findByAccountId(accountId);
+
+        List<RefreshTokenSession> sessionsToRevoke = sessions.stream()
+                .filter(session -> !session.getSessionId().equals(excludedSessionId))
+                .filter(session -> !Boolean.TRUE.equals(session.getRevoked()))
+                .toList();
+
+        List<String> revokedSessionIds = new java.util.ArrayList<>();
+        if (!sessionsToRevoke.isEmpty()) {
+            sessionsToRevoke.forEach(session -> {
+                session.setRevoked(true);
+                revokedSessionIds.add(session.getSessionId());
+            });
+            refreshSessionRepository.saveAll(sessionsToRevoke);
+            log.info("Revoked {} other refresh sessions for accountId={}, keeping sessionId={}",
+                    revokedSessionIds.size(), accountId, excludedSessionId);
+        }
+
+        return revokedSessionIds;
+    }
+
+    @Override
     public int revokeAllUserRefreshSessions(String accountId) {
         List<RefreshTokenSession> sessions = refreshSessionRepository.findByAccountId(accountId);
         int count = sessions.size();

@@ -117,7 +117,7 @@ public class JwtUtil {
      * @param token JWT token
      * @return User ID
      */
-    public String extractUserId(String token) {
+    public String extractAccountId(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 

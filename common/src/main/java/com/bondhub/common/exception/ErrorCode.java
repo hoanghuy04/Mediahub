@@ -18,6 +18,11 @@ public enum ErrorCode {
         AUTH_DEVICE_ID_REQUIRED(HttpStatus.BAD_REQUEST, 1007, "error.auth.device.id.required"),
         AUTH_DEVICE_MISMATCH(HttpStatus.FORBIDDEN, 1008, "error.auth.device.mismatch"),
         AUTH_SESSION_KICKED(HttpStatus.UNAUTHORIZED, 1009, "error.auth.session.kicked"),
+        QR_SESSION_EXPIRED(HttpStatus.BAD_REQUEST, 1010, "error.qr.session.expired"),
+        QR_SESSION_INVALID_STATE(HttpStatus.CONFLICT, 1011, "error.qr.session.invalid.state"),
+        QR_SESSION_UNAUTHORIZED(HttpStatus.FORBIDDEN, 1012, "error.qr.session.unauthorized"),
+        AUTH_INVALID_OLD_PASSWORD(HttpStatus.BAD_REQUEST, 1013, "error.auth.invalid.old.password"),
+        AUTH_NEW_PASSWORD_SAME_AS_OLD(HttpStatus.BAD_REQUEST, 1014, "error.auth.new.password.same.as.old"),
 
         // User account errors (2xxx)
         ACC_PHONE_NUMBER_ALREADY_USED(HttpStatus.CONFLICT, 2001, "error.acc.phone.number.already.used"),
@@ -54,10 +59,7 @@ public enum ErrorCode {
         INVALID_YEAR_ATTRIBUTE_PAIR(HttpStatus.BAD_REQUEST, 2304, "error.invalid.year.attribute.pair"),
         INVALID_OPERATION(HttpStatus.BAD_REQUEST, 2305, "error.invalid.operation"),
         INVALID_PROMOTION_CONDITION(HttpStatus.BAD_REQUEST, 2306, "error.invalid.promotion.condition"),
-        ACC_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, 2307, "error.acc.password.mismatch"),
-        QR_SESSION_EXPIRED(HttpStatus.BAD_REQUEST, 1010, "error.qr.session.expired"),
-        QR_SESSION_INVALID_STATE(HttpStatus.CONFLICT, 1011, "error.qr.session.invalid.state"),
-        QR_SESSION_UNAUTHORIZED(HttpStatus.FORBIDDEN, 1012, "error.qr.session.unauthorized")
+        ACC_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, 2307, "error.acc.password.mismatch")
 
         ;
 

@@ -26,6 +26,8 @@ public interface DeviceMapper {
 
     DeviceResponse toResponse(Device device);
 
+    DeviceResponse toResponse(Device device, Boolean isActive);
+
     Device toEntity(DeviceCreateRequest request);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

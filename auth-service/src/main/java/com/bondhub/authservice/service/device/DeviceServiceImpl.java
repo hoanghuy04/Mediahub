@@ -5,7 +5,9 @@ import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
 import com.bondhub.authservice.dto.device.response.DeviceResponse;
 import com.bondhub.authservice.mapper.DeviceMapper;
 import com.bondhub.authservice.model.Device;
+import com.bondhub.authservice.model.redis.RefreshTokenSession;
 import com.bondhub.authservice.repository.DeviceRepository;
+import com.bondhub.authservice.repository.redis.RefreshTokenSessionRepository;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -14,7 +16,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class DeviceServiceImpl implements DeviceService {
 
     DeviceRepository deviceRepository;
     DeviceMapper deviceMapper;
+    RefreshTokenSessionRepository refreshTokenSessionRepository;
 
     @Override
     public DeviceResponse createDevice(DeviceCreateRequest request) {
@@ -37,7 +42,7 @@ public class DeviceServiceImpl implements DeviceService {
         Device device = deviceMapper.toEntity(request);
         Device savedDevice = deviceRepository.save(device);
         log.info("Device created successfully with id: {}", savedDevice.getId());
-        return deviceMapper.toResponse(savedDevice);
+        return deviceMapper.toResponse(savedDevice, isSessionActive(savedDevice.getSessionId()));
     }
 
     @Override
@@ -50,7 +55,7 @@ public class DeviceServiceImpl implements DeviceService {
                 });
 
         log.info("Device found with id: {}", id);
-        return deviceMapper.toResponse(device);
+        return deviceMapper.toResponse(device, isSessionActive(device.getSessionId()));
     }
 
     @Override
@@ -63,7 +68,7 @@ public class DeviceServiceImpl implements DeviceService {
                 });
 
         log.info("Device found with sessionId: {}", sessionId);
-        return deviceMapper.toResponse(device);
+        return deviceMapper.toResponse(device, isSessionActive(device.getSessionId()));
     }
 
     @Override
@@ -72,7 +77,7 @@ public class DeviceServiceImpl implements DeviceService {
         List<Device> devices = deviceRepository.findByAccountId(accountId);
         log.info("Found {} devices for accountId: {}", devices.size(), accountId);
         return devices.stream()
-                .map(deviceMapper::toResponse)
+                .map(device -> deviceMapper.toResponse(device, isSessionActive(device.getSessionId())))
                 .toList();
     }
 
@@ -82,7 +87,7 @@ public class DeviceServiceImpl implements DeviceService {
         List<Device> devices = deviceRepository.findAll();
         log.info("Found {} devices", devices.size());
         return devices.stream()
-                .map(deviceMapper::toResponse)
+                .map(device -> deviceMapper.toResponse(device, isSessionActive(device.getSessionId())))
                 .toList();
     }
 
@@ -105,7 +110,7 @@ public class DeviceServiceImpl implements DeviceService {
         deviceMapper.updateEntityFromRequest(deviceToUpdate, request);
         Device updatedDevice = deviceRepository.save(deviceToUpdate);
         log.info("Device updated successfully with id: {}", id);
-        return deviceMapper.toResponse(updatedDevice);
+        return deviceMapper.toResponse(updatedDevice, isSessionActive(updatedDevice.getSessionId()));
     }
 
     @Override
@@ -120,7 +125,7 @@ public class DeviceServiceImpl implements DeviceService {
         deviceMapper.updateEntityFromRequest(deviceToUpdate, request);
         Device updatedDevice = deviceRepository.save(deviceToUpdate);
         log.info("Device updated successfully with sessionId: {}", sessionId);
-        return deviceMapper.toResponse(updatedDevice);
+        return deviceMapper.toResponse(updatedDevice, isSessionActive(updatedDevice.getSessionId()));
     }
 
     @Override
@@ -149,5 +154,76 @@ public class DeviceServiceImpl implements DeviceService {
         boolean exists = deviceRepository.existsBySessionId(sessionId);
         log.info("Device with sessionId {} exists: {}", sessionId, exists);
         return exists;
+    }
+
+    @Override
+    public List<DeviceResponse> getActiveDevicesWithSessions(String accountId, String currentSessionId) {
+        log.info("Fetching active devices with sessions for accountId: {}", accountId);
+
+        // Get all devices for the account from MongoDB
+        List<Device> devices = deviceRepository.findByAccountId(accountId);
+        log.info("Found {} devices for accountId: {}", devices.size(), accountId);
+
+        List<DeviceResponse> activeDevices = new ArrayList<>();
+
+        for (Device device : devices) {
+            if (device.getSessionId() == null) {
+                log.debug("Device {} has no sessionId, skipping", device.getId());
+                continue;
+            }
+
+            // Check if there's an active session in Redis for this device
+            Optional<RefreshTokenSession> sessionOpt = refreshTokenSessionRepository.findById(device.getSessionId());
+
+            if (sessionOpt.isPresent()) {
+                RefreshTokenSession session = sessionOpt.get();
+
+                // Check if the session is still valid
+                if (session.isValid()) {
+                    boolean isCurrentDevice = device.getSessionId().equals(currentSessionId);
+
+                    // Use existing mapper and add session fields
+                    DeviceResponse response = new DeviceResponse(
+                            device.getId(),
+                            device.getDeviceId(),
+                            device.getSessionId(),
+                            device.getDeviceName(),
+                            device.getBrowser(),
+                            device.getOs(),
+                            device.getDeviceType(),
+                            device.getIpAddress(),
+                            device.getLastActiveTime(),
+                            device.getAccountId(),
+                            device.getCreatedAt(),
+                            device.getLastModifiedAt(),
+                            device.getCreatedBy(),
+                            device.getLastModifiedBy(),
+                            session.getIssuedAt(),
+                            session.getExpiresAt(),
+                            isCurrentDevice,
+                            true);
+
+                    activeDevices.add(response);
+                    log.debug("Device {} has active session, added to result", device.getId());
+                } else {
+                    log.debug("Device {} has expired or revoked session, skipping", device.getId());
+                }
+            } else {
+                log.debug("No session found in Redis for device {} with sessionId: {}",
+                        device.getId(), device.getSessionId());
+            }
+        }
+
+        log.info("Found {} devices with active sessions for accountId: {}", activeDevices.size(), accountId);
+        return activeDevices;
+    }
+
+    private boolean isSessionActive(String sessionId) {
+        if (sessionId == null) {
+            return false;
+        }
+        return refreshTokenSessionRepository.findById(sessionId)
+                .map(RefreshTokenSession::isValid)
+                .orElse(false);
     }
 }

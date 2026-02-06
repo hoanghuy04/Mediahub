@@ -1,5 +1,6 @@
 package com.bondhub.authservice.service.auth;
 
+import com.bondhub.authservice.dto.auth.request.ChangePasswordRequest;
 import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
 import com.bondhub.authservice.dto.auth.request.LoginRequest;
 import com.bondhub.authservice.dto.auth.request.RefreshRequest;
@@ -12,6 +13,7 @@ import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.dto.device.request.DeviceCreateRequest;
 import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
+import com.bondhub.authservice.dto.device.response.DeviceResponse;
 import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.model.Account;
@@ -42,6 +44,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -79,12 +82,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new AppException(ErrorCode.AUTH_UNAUTHENTICATED);
         }
 
-        TokenResponse tokenResponse = generateFullTokenResponse(account, request.deviceId(), request.deviceType(), userAgent, ipAddress);
-        
+        TokenResponse tokenResponse = generateFullTokenResponse(account, request.deviceId(), request.deviceType(),
+                userAgent, ipAddress);
+
         // Extract sessionId from the access token for device tracking
         String sessionId = jwtUtil.extractSessionId(tokenResponse.accessToken());
-        createOrUpdateDevice(sessionId, request.deviceId(), request.deviceType(), account.getId(), userAgent, ipAddress);
-        
+        createOrUpdateDevice(sessionId, request.deviceId(), request.deviceType(), account.getId(), userAgent,
+                ipAddress);
+
         return tokenResponse;
     }
 
@@ -126,7 +131,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         String sessionId = jwtUtil.extractSessionId(refreshToken);
-        String userId = jwtUtil.extractUserId(refreshToken);
+        String userId = jwtUtil.extractAccountId(refreshToken);
 
         if (sessionId == null || userId == null) {
             throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
@@ -153,19 +158,93 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .map(s -> s.getDeviceType())
                 .orElse(DeviceType.WEB);
 
-        TokenResponse tokenResponse = generateFullTokenResponse(account, request.deviceId(), deviceType, userAgent, ipAddress);
-        
+        TokenResponse tokenResponse = generateFullTokenResponse(account, request.deviceId(), deviceType, userAgent,
+                ipAddress);
+
         // Update device last active time
         String newSessionId = jwtUtil.extractSessionId(tokenResponse.accessToken());
         updateDeviceLastActive(sessionId, newSessionId);
-        
+
         return tokenResponse;
+    }
+
+    @Override
+    public void logoutAllOtherDevices(String refreshToken) {
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        String currentSessionId = jwtUtil.extractSessionId(refreshToken);
+        String userId = jwtUtil.extractAccountId(refreshToken);
+
+        if (currentSessionId == null || userId == null) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        log.info("Logging out all other devices for user: {}, currentSessionId: {}", userId, currentSessionId);
+
+        // Use Redis to find and revoke sessions directly, avoiding MongoDB device repo
+        List<String> revokedSessionIds = tokenStoreService.revokeAllUserRefreshSessionsExcept(userId, currentSessionId);
+
+        // Update last active time for all revoked sessions in MongoDB
+        for (String sessionId : revokedSessionIds) {
+            try {
+                DeviceUpdateRequest updateRequest = DeviceUpdateRequest.builder()
+                        .lastActiveTime(LocalDateTime.now())
+                        .build();
+                deviceService.updateDeviceBySessionId(sessionId, updateRequest);
+                log.debug("Updated device for revoked session: {}", sessionId);
+            } catch (Exception e) {
+                log.warn("Failed to update device for revoked session: {}", sessionId);
+            }
+        }
+
+        log.info("Logged out {} other devices for user: {}", revokedSessionIds.size(), userId);
+    }
+
+    @Override
+    public void logoutDevice(String targetSessionId, String refreshToken) {
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        String userId = jwtUtil.extractAccountId(refreshToken);
+        if (userId == null) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        log.info("Request to logout device session {} by user {}", targetSessionId, userId);
+
+        // Verify ownership and existence via TokenStoreService
+        com.bondhub.authservice.model.redis.RefreshTokenSession session = tokenStoreService
+                .findRefreshSession(targetSessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.DEV_DEVICE_NOT_FOUND));
+
+        if (!session.getAccountId().equals(userId)) {
+            log.warn("User {} attempted to logout session {} belonging to {}", userId, targetSessionId,
+                    session.getAccountId());
+            throw new AppException(ErrorCode.AUTH_UNAUTHORIZED);
+        }
+
+        // Revoke session
+        tokenStoreService.revokeRefreshSession(targetSessionId);
+
+        // Update device in MongoDB
+        try {
+            DeviceUpdateRequest updateRequest = DeviceUpdateRequest.builder()
+                    .lastActiveTime(LocalDateTime.now())
+                    .build();
+            deviceService.updateDeviceBySessionId(targetSessionId, updateRequest);
+            log.info("✅ Device logged out and updated: {}", targetSessionId);
+        } catch (Exception e) {
+            log.warn("⚠️ Could not update device details for session: {}", targetSessionId);
+        }
     }
 
     @Override
     public void logout(String refreshToken) {
         String sessionId = null;
-        
+
         try {
             if (securityUtil.isAuthenticated()) {
                 String jti = securityUtil.getCurrentJwtId();
@@ -192,7 +271,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 } catch (Exception e) {
                     log.warn("⚠️ Could not update device last active time on logout for sessionId: {}", sessionId);
                 }
-                
+
                 tokenStoreService.revokeRefreshSession(sessionId);
             }
         }
@@ -319,8 +398,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     account.getId(),
                     "Account",
                     EventType.ACCOUNT_REGISTERED,
-                    event
-            );
+                    event);
 
             log.info("✅ Account registered event published for accountId: {}", account.getId());
 
@@ -335,11 +413,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 request.deviceType(),
                 userAgent,
                 ipAddress);
-        
+
         // Extract sessionId from the access token for device tracking
         String sessionId = jwtUtil.extractSessionId(tokenResponse.accessToken());
-        createOrUpdateDevice(sessionId, request.deviceId(), request.deviceType(), account.getId(), userAgent, ipAddress);
-        
+        createOrUpdateDevice(sessionId, request.deviceId(), request.deviceType(), account.getId(), userAgent,
+                ipAddress);
+
         return tokenResponse;
     }
 
@@ -383,19 +462,47 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // Generate device ID for password reset (since it's not provided in request)
         String deviceId = "pwd-reset-" + UUID.randomUUID().toString().substring(0, 8);
-        
+
         TokenResponse tokenResponse = generateFullTokenResponse(
                 account,
                 deviceId,
                 DeviceType.WEB,
                 userAgent,
                 ipAddress);
-        
+
         // Track device after password reset
         String sessionId = jwtUtil.extractSessionId(tokenResponse.accessToken());
         createOrUpdateDevice(sessionId, deviceId, DeviceType.WEB, account.getId(), userAgent, ipAddress);
-        
+
         return tokenResponse;
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        log.info("Changing password for authenticated user");
+
+        // Get currently authenticated user's ID
+        String accountId = securityUtil.getCurrentAccountId();
+
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
+
+        // Verify old password
+        if (!passwordEncoder.matches(request.oldPassword(), account.getPassword())) {
+            log.warn("Invalid old password for account: {}", accountId);
+            throw new AppException(ErrorCode.AUTH_INVALID_OLD_PASSWORD);
+        }
+
+        // Validate new password is different from old
+        if (request.oldPassword().equals(request.newPassword())) {
+            throw new AppException(ErrorCode.AUTH_NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        // Update password
+        account.setPassword(passwordEncoder.encode(request.newPassword()));
+        accountRepository.save(account);
+
+        log.info("✅ Password successfully changed for account: {}", accountId);
     }
 
     private TokenResponse generateFullTokenResponse(Account account, String deviceId, DeviceType deviceType,
@@ -429,9 +536,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
      */
     private void updateDeviceLastActive(String oldSessionId, String newSessionId) {
         try {
-            // Find device by old session ID and update with new session ID and last active time
+            // Find device by old session ID and update with new session ID and last active
+            // time
             var device = deviceService.getDeviceBySessionId(oldSessionId);
-            
+
             var updateRequest = new com.bondhub.authservice.dto.device.request.DeviceUpdateRequest(
                     null, // Keep existing device ID
                     newSessionId,
@@ -441,9 +549,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     null, // Keep existing device type
                     null, // Keep existing IP
                     java.time.LocalDateTime.now(), // Update last active time
-                    null  // Keep existing account ID
+                    null // Keep existing account ID
             );
-            
+
             deviceService.updateDevice(device.id(), updateRequest);
             log.info("✅ Device last active time updated for sessionId: {} -> {}", oldSessionId, newSessionId);
         } catch (Exception e) {
@@ -459,12 +567,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
             // Parse device information from User-Agent
             DeviceInfo deviceInfo = parseDeviceInfo(userAgent, deviceType);
-            
+
             // Check if device already exists for this account
             var existingDevice = deviceService.getDevicesByAccountId(accountId).stream()
                     .filter(device -> deviceId.equals(device.deviceId()))
                     .findFirst();
-            
+
             if (existingDevice.isPresent()) {
                 // Update existing device with new sessionId and activity time
                 DeviceUpdateRequest updateRequest = DeviceUpdateRequest.builder()
@@ -476,9 +584,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         .ipAddress(ipAddress)
                         .lastActiveTime(java.time.LocalDateTime.now())
                         .build();
-                
+
                 deviceService.updateDevice(existingDevice.get().id(), updateRequest);
-                log.info("✅ Device updated for account: {}, sessionId: {}, deviceId: {}", accountId, sessionId, deviceId);
+                log.info("✅ Device updated for account: {}, sessionId: {}, deviceId: {}", accountId, sessionId,
+                        deviceId);
             } else {
                 // Create new device
                 DeviceCreateRequest deviceRequest = new DeviceCreateRequest(
@@ -490,11 +599,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         deviceType,
                         ipAddress,
                         java.time.LocalDateTime.now(),
-                        accountId
-                );
-                
+                        accountId);
+
                 deviceService.createDevice(deviceRequest);
-                log.info("✅ Device created for account: {}, sessionId: {}, deviceId: {}", accountId, sessionId, deviceId);
+                log.info("✅ Device created for account: {}, sessionId: {}, deviceId: {}", accountId, sessionId,
+                        deviceId);
             }
         } catch (Exception e) {
             log.error("❌ Failed to track device for account: {}, sessionId: {}", accountId, sessionId, e);
@@ -512,7 +621,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         try {
             Parser uaParser = new Parser();
             Client client = uaParser.parse(userAgent);
-            
+
             // Get browser information
             String browser = client.userAgent.family;
             if (client.userAgent.major != null) {
@@ -521,7 +630,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     browser += "." + client.userAgent.minor;
                 }
             }
-            
+
             // Get OS information
             String os = client.os.family;
             if (client.os.major != null) {
@@ -530,15 +639,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     os += "." + client.os.minor;
                 }
             }
-            
+
             // Get device name
             String deviceName = client.device.family;
             if ("Other".equals(deviceName)) {
                 deviceName = deviceType == DeviceType.MOBILE ? "Mobile Device" : "Web Browser";
             }
-            
+
             return new DeviceInfo(deviceName, browser, os);
-            
+
         } catch (Exception e) {
             log.warn("Failed to parse User-Agent: {}", userAgent, e);
             return new DeviceInfo("Unknown Device", "Unknown", "Unknown");

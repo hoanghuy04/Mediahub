@@ -1,6 +1,7 @@
 package com.bondhub.userservice.dto.request.settings;
 
 import com.bondhub.userservice.model.enums.PrivacyLevel;
+import com.bondhub.userservice.model.enums.DobVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
@@ -8,9 +9,9 @@ import java.time.LocalDateTime;
 
 @Schema(description = "Request to update privacy settings")
 public record PrivacySettingsUpdateRequest(
-        @Schema(description = "Show date of birth", example = "true")
+        @Schema(description = "Date of birth visibility", example = "FULL_DATE")
         @NotNull(message = "showDob cannot be null")
-        Boolean showDob,
+        DobVisibility showDob,
 
         @Schema(description = "Show active status", example = "true")
         @NotNull(message = "showActiveStatus cannot be null")
