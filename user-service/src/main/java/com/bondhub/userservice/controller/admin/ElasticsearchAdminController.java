@@ -1,8 +1,11 @@
 package com.bondhub.userservice.controller.admin;
 
 import com.bondhub.common.dto.ApiResponse;
+import com.bondhub.common.dto.PageResponse;
+import com.bondhub.common.dto.OutboxResponse;
+import com.bondhub.common.model.kafka.EventType;
+import com.bondhub.common.model.kafka.OutboxEvent;
 import com.bondhub.common.utils.LocalizationUtil;
-import com.bondhub.userservice.dto.request.elasticsearch.AnalyzeRequest;
 import com.bondhub.userservice.dto.response.elasticsearch.*;
 import com.bondhub.userservice.model.elasticsearch.UserIndex;
 import com.bondhub.userservice.service.elasticsearch.ElasticsearchAdminService;
@@ -33,7 +36,6 @@ public class ElasticsearchAdminController {
             "taskId", taskId
         ));
     }
-
     @GetMapping("/reindex/status/{taskId}")
     public ApiResponse<ReindexStatusResponse> getReindexStatus(@PathVariable String taskId) {
         return ApiResponse.success(userSyncService.getReindexStatus(taskId));
@@ -48,16 +50,24 @@ public class ElasticsearchAdminController {
         ));
     }
 
+    @GetMapping("/summary")
+    public ApiResponse<ElasticsearchSummaryResponse> getSummary() {
+        return ApiResponse.success(elasticsearchAdminService.getSummary());
+    }
+
+    @Deprecated
     @GetMapping("/health")
     public ApiResponse<ElasticsearchHealthResponse> getHealth() {
         return ApiResponse.success(elasticsearchAdminService.getHealth());
     }
 
+    @Deprecated
     @GetMapping("/stats")
     public ApiResponse<IndexStatsResponse> getStats() {
         return ApiResponse.success(elasticsearchAdminService.getIndexStats());
     }
 
+    @Deprecated
     @GetMapping("/compare")
     public ApiResponse<DataComparisonResponse> compareWithDatabase() {
         return ApiResponse.success(elasticsearchAdminService.compareWithDatabase());

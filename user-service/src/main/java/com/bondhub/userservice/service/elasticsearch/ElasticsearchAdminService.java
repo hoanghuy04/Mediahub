@@ -15,6 +15,8 @@ public interface ElasticsearchAdminService {
 
     DataComparisonResponse compareWithDatabase();
 
+    ElasticsearchSummaryResponse getSummary();
+
     UserIndex getDocument(String userId);
 
     void reindexUser(String userId);

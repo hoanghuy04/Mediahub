@@ -23,7 +23,16 @@ public class DataSeederController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> seedAccounts(
             @RequestParam(defaultValue = "10") int count) {
         
-        log.info("📥 Received seed request for {} accounts with fuzzy names", count);
+        log.info("📥 Received seed request for {} accounts", count);
+
+        // Nếu seed số lượng lớn (ví dụ >= 50), chạy background để tránh timeout
+        if (count >= 50) {
+            accountSeederService.seedAccountsAsync(count);
+            return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "message", "Seeding started in background for " + count + " accounts. Check logs for progress.",
+                "status", "STARTED"
+            )));
+        }
 
         Map<String, Object> result = accountSeederService.seedAccounts(count);
 

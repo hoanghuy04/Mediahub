@@ -43,32 +43,28 @@ public class UserSearchServiceImpl implements UserSearchService {
         String currentAccountId = securityUtil.getCurrentAccountId();
 
         Query query = Query.of(q -> q.bool(b -> {
-            // Exact phone number match - highest priority
             b.should(s -> s.term(t ->
                     t.field("phoneNumber")
                             .value(searchTerm)
                             .boost(10.0f)
             ));
 
-            // Exact full name match (edge n-gram) - high priority
             b.should(s -> s.match(m ->
                     m.field("fullName")
                             .query(searchTerm)
                             .boost(5.0f)
             ));
 
-            // Fuzzy match on normalized fullName - medium priority
             b.should(s -> s.match(m ->
                     m.field("fullName.fuzzy")
                             .query(searchTerm)
                             .fuzziness("AUTO")
-                            .prefixLength(0)  // Allow fuzzy in entire string
+                            .prefixLength(0)
                             .maxExpansions(50)
-                            .fuzzyTranspositions(true)  // Allow character swaps
+                            .fuzzyTranspositions(true)
                             .boost(2.0f)
             ));
 
-            // Multi-match with fuzzy across all text fields
             b.should(s -> s.multiMatch(mm ->
                     mm.fields("fullName", "fullName.fuzzy")
                             .query(searchTerm)

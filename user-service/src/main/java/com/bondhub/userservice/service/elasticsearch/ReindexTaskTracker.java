@@ -1,6 +1,7 @@
 package com.bondhub.userservice.service.elasticsearch;
 
 import com.bondhub.userservice.dto.response.elasticsearch.ReindexStatusResponse;
+import com.bondhub.userservice.enums.ReindexTaskStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -20,5 +21,10 @@ public class ReindexTaskTracker {
 
     public void removeTask(String taskId) {
         tasks.remove(taskId);
+    }
+
+    public boolean isReindexRunning() {
+        return tasks.values().stream()
+                .anyMatch(task -> task.status() == ReindexTaskStatus.RUNNING);
     }
 }

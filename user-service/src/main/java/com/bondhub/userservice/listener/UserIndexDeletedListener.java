@@ -73,10 +73,14 @@ public class UserIndexDeletedListener {
             @Header(KafkaHeaders.EXCEPTION_MESSAGE) String exceptionMessage) {
 
         log.error("Delete event in DLQ: userId={}, reason={}", event.userId(), exceptionMessage);
-        updateOutboxStatus(event.userId(), EventType.USER_INDEX_DELETED, OutboxEvent.OutboxEventStatus.DEAD);
+        updateOutboxStatus(event.userId(), EventType.USER_INDEX_DELETED, OutboxEvent.OutboxEventStatus.DEAD, exceptionMessage);
     }
 
     private void updateOutboxStatus(String userId, EventType eventType, OutboxEvent.OutboxEventStatus status) {
+        updateOutboxStatus(userId, eventType, status, null);
+    }
+
+    private void updateOutboxStatus(String userId, EventType eventType, OutboxEvent.OutboxEventStatus status, String errorMessage) {
         try {
             Optional<OutboxEvent> outboxEventOpt = outboxEventRepository
                     .findTopByAggregateIdAndEventTypeOrderByCreatedAtDesc(userId, eventType);
@@ -84,6 +88,9 @@ public class UserIndexDeletedListener {
             if (outboxEventOpt.isPresent()) {
                 OutboxEvent outboxEvent = outboxEventOpt.get();
                 outboxEvent.setStatus(status);
+                if (errorMessage != null) {
+                    outboxEvent.setErrorMessage(errorMessage);
+                }
                 outboxEventRepository.save(outboxEvent);
                 log.info("✅ Updated outbox to {}: eventId={}, userId={}, eventType={}",
                         status, outboxEvent.getId(), userId, eventType);

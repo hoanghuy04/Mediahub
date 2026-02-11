@@ -18,6 +18,7 @@ import com.bondhub.userservice.dto.response.elasticsearch.*;
 import com.bondhub.userservice.enums.DataSyncStatus;
 import com.bondhub.userservice.enums.ElasticsearchClusterStatus;
 import com.bondhub.userservice.enums.IndexStatus;
+import com.bondhub.userservice.enums.ReindexTaskStatus;
 import com.bondhub.userservice.model.User;
 import com.bondhub.userservice.model.elasticsearch.UserIndex;
 import com.bondhub.userservice.repository.UserRepository;
@@ -32,6 +33,7 @@ import org.springframework.data.elasticsearch.core.query.IndexQueryBuilder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -49,6 +51,18 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
     ElasticsearchProperties esProperties;
     AuthServiceClient authServiceClient;
     LocalizationUtil localizationUtil;
+    ReindexTaskTracker reindexTaskTracker;
+    UserDeadEventService userDeadEventService;
+
+    @Override
+    public ElasticsearchSummaryResponse getSummary() {
+        return ElasticsearchSummaryResponse.builder()
+                .health(getHealth())
+                .stats(getIndexStats())
+                .compare(compareWithDatabase())
+                .deadEventsCount(userDeadEventService.countDeadEvents())
+                .build();
+    }
 
     @Override
     public ElasticsearchHealthResponse getHealth() {
@@ -84,6 +98,18 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             String alias = esProperties.getUserAlias();
             String actualIndex = getActualIndexName(alias);
 
+            var exists = esClient.indices().exists(e -> e.index(actualIndex));
+            if (!exists.value()) {
+                return IndexStatsResponse.builder()
+                        .indexName(alias)
+                        .documentCount(0L)
+                        .primaryStoreSize("0b")
+                        .totalStoreSize("0b")
+                        .numberOfShards(0)
+                        .numberOfReplicas(0)
+                        .build();
+            }
+
             IndicesStatsResponse statsResponse = esClient.indices().stats(s -> s.index(actualIndex));
 
             var indicesStatsMap = statsResponse.indices();
@@ -94,7 +120,14 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             }
 
             if (indexStats == null) {
-                throw new AppException(ErrorCode.EL_INDEX_NOT_FOUND);
+                return IndexStatsResponse.builder()
+                        .indexName(actualIndex)
+                        .documentCount(0L)
+                        .primaryStoreSize("0b")
+                        .totalStoreSize("0b")
+                        .numberOfShards(0)
+                        .numberOfReplicas(0)
+                        .build();
             }
 
             var primaries = indexStats.primaries();
@@ -106,12 +139,19 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
                     .primaryStoreSize(formatStoreSize(primaries))
                     .totalStoreSize(formatStoreSize(total))
                     .numberOfShards(statsResponse.shards() != null ? statsResponse.shards().total().intValue() : 0)
-                    .numberOfReplicas(0) 
+                    .numberOfReplicas(0)
                     .build();
 
         } catch (IOException e) {
             log.error("Failed to get index stats: {}", e.getMessage(), e);
-            throw new AppException(ErrorCode.EL_CLUSTER_UNHEALTHY);
+            return IndexStatsResponse.builder()
+                    .indexName("unavailable")
+                    .documentCount(0L)
+                    .primaryStoreSize("0b")
+                    .totalStoreSize("0b")
+                    .numberOfShards(0)
+                    .numberOfReplicas(0)
+                    .build();
         }
     }
 
@@ -120,8 +160,6 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             return "0b";
         }
         
-        // Prefer sizeInBytes for computation if needed, but the client might provide a formatted size
-        // If size() is null or empty, we manually format sizeInBytes
         String size = stats.store().size();
         if (size != null && !size.isEmpty()) {
             return size;
@@ -136,36 +174,57 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
         final String[] units = new String[] { "b", "KB", "MB", "GB", "TB" };
         int digitGroups = (int) (Math.log10(bytes) / Math.log10(1024));
         if (digitGroups >= units.length) digitGroups = units.length - 1;
-        return new java.text.DecimalFormat("#,##0.#").format(bytes / Math.pow(1024, digitGroups)) + units[digitGroups];
+        return new DecimalFormat("#,##0.#").format(bytes / Math.pow(1024, digitGroups)) + units[digitGroups];
     }
 
     @Override
     public DataComparisonResponse compareWithDatabase() {
-        long esCount = getElasticsearchDocumentCount();
-        long dbCount = userRepository.count();
-        long difference = Math.abs(esCount - dbCount);
+        try {
+            if (reindexTaskTracker.isReindexRunning()) {
+                return DataComparisonResponse.builder()
+                        .elasticsearchCount(0)
+                        .databaseCount(0)
+                        .difference(0)
+                        .status(DataSyncStatus.IN_SYNC)
+                        .recommendation(localizationUtil.getMessage("search.compare.reindexing"))
+                        .build();
+            }
 
-        DataSyncStatus status;
-        String recommendation;
+            long esCount = getElasticsearchDocumentCount();
+            long dbCount = userRepository.count();
+            long difference = Math.abs(esCount - dbCount);
 
-        if (difference == 0) {
-            status = DataSyncStatus.IN_SYNC;
-            recommendation = localizationUtil.getMessage("search.compare.recommendation.in_sync");
-        } else if (esCount > dbCount) {
-            status = DataSyncStatus.ES_AHEAD;
-            recommendation = localizationUtil.getMessage("search.compare.recommendation.es_ahead", difference);
-        } else {
-            status = DataSyncStatus.DB_AHEAD;
-            recommendation = localizationUtil.getMessage("search.compare.recommendation.db_ahead", difference);
+            DataSyncStatus status;
+            String recommendation;
+
+            if (difference == 0) {
+                status = DataSyncStatus.IN_SYNC;
+                recommendation = localizationUtil.getMessage("search.compare.recommendation.in_sync");
+            } else if (esCount > dbCount) {
+                status = DataSyncStatus.ES_AHEAD;
+                recommendation = localizationUtil.getMessage("search.compare.recommendation.es_ahead", difference);
+            } else {
+                status = DataSyncStatus.DB_AHEAD;
+                recommendation = localizationUtil.getMessage("search.compare.recommendation.db_ahead", difference);
+            }
+
+            return DataComparisonResponse.builder()
+                    .elasticsearchCount(esCount)
+                    .databaseCount(dbCount)
+                    .difference(difference)
+                    .status(status)
+                    .recommendation(recommendation)
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to compare data: {}", e.getMessage(), e);
+            return DataComparisonResponse.builder()
+                    .elasticsearchCount(0)
+                    .databaseCount(0)
+                    .difference(0)
+                    .status(DataSyncStatus.IN_SYNC)
+                    .recommendation(localizationUtil.getMessage("search.compare.unavailable"))
+                    .build();
         }
-
-        return DataComparisonResponse.builder()
-                .elasticsearchCount(esCount)
-                .databaseCount(dbCount)
-                .difference(difference)
-                .status(status)
-                .recommendation(recommendation)
-                .build();
     }
 
     @Override
@@ -179,6 +238,16 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
 
     @Override
     public void reindexUser(String userId) {
+        if (reindexTaskTracker.isReindexRunning()) {
+            throw new AppException(ErrorCode.EL_REINDEX_IN_PROGRESS);
+        }
+
+        ElasticsearchHealthResponse health = getHealth();
+        if (health.status() == ElasticsearchClusterStatus.RED
+                || health.status() == ElasticsearchClusterStatus.UNREACHABLE) {
+            throw new AppException(ErrorCode.EL_CLUSTER_UNHEALTHY);
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -209,7 +278,6 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             String alias = esProperties.getUserAlias();
             String pattern = alias + "*";
 
-            // 1. Lấy danh sách index và stats tương ứng
             GetAliasResponse aliasResponse = esClient.indices().getAlias(g -> g.index(pattern));
             List<String> indexNames = new ArrayList<>(aliasResponse.result().keySet());
 
@@ -218,7 +286,6 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             IndicesStatsResponse allStats = esClient.indices().stats(s -> s.index(indexNames));
             String currentIndex = getActualIndexName(alias);
 
-            // 2. Map sang DTO chi tiết
             return indexNames.stream()
                     .map(name -> {
                         var stats = allStats.indices().get(name);
@@ -247,18 +314,16 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             String alias = esProperties.getUserAlias();
             String oldIndex = getActualIndexName(alias);
 
-            // Kiểm tra index mục tiêu có tồn tại không
             var exists = esClient.indices().exists(e -> e.index(targetIndexName));
             if (!exists.value()) throw new AppException(ErrorCode.EL_INDEX_NOT_FOUND);
 
-            // Thực hiện đảo Alias nguyên tử (Atomic Switch)
             esClient.indices().updateAliases(u -> u
                     .actions(a -> a.remove(r -> r.index(oldIndex).alias(alias)))
                     .actions(a -> a.add(ad -> ad.index(targetIndexName).alias(alias)))
             );
 
             log.info("Rollback: Switched alias {} from {} to {}", alias, oldIndex, targetIndexName);
-            return new IndexOperationResponse("Đã chuyển đổi Alias thành công", targetIndexName);
+            return new IndexOperationResponse(localizationUtil.getMessage("search.alias.switch.success"), targetIndexName);
         } catch (IOException e) {
             throw new AppException(ErrorCode.EL_CLUSTER_UNHEALTHY);
         }
@@ -269,7 +334,6 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
         try {
             String currentIndex = getActualIndexName(esProperties.getUserAlias());
 
-            // Tuyệt đối không cho xóa Index đang ACTIVE
             if (indexName.equals(currentIndex)) {
                 throw new AppException(ErrorCode.EL_CLUSTER_UNHEALTHY);
             }
@@ -277,7 +341,7 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
             esClient.indices().delete(d -> d.index(indexName));
             log.info("Admin deleted physical index: {}", indexName);
 
-            return new IndexOperationResponse("Đã xóa index vật lý vĩnh viễn", indexName);
+            return new IndexOperationResponse(localizationUtil.getMessage("search.index.delete.success"), indexName);
         } catch (IOException e) {
             throw new AppException(ErrorCode.EL_CLUSTER_UNHEALTHY);
         }
@@ -296,13 +360,18 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
     private String getActualIndexName(String alias) {
         try {
             GetAliasResponse aliasResponse = esClient.indices().getAlias(g -> g.name(alias));
-            return aliasResponse.result().keySet().stream()
+            var result = aliasResponse.result().keySet().stream()
                     .filter(index -> !index.startsWith("."))
-                    .sorted(Comparator.reverseOrder()) // Prefer newest users_... index
-                    .findFirst()
-                    .orElse(alias);
+                    .sorted(Comparator.reverseOrder())
+                    .findFirst();
+
+            if (result.isEmpty()) {
+                log.warn("Alias '{}' exists but resolved to no physical index. Downstream operations may use alias name as fallback — data may be stale.", alias);
+                return alias;
+            }
+            return result.get();
         } catch (Exception e) {
-            log.warn("Failed to resolve actual index for alias {}: {}", alias, e.getMessage());
+            log.warn("Failed to resolve actual index for alias '{}': {}. Using alias as fallback — data may be stale.", alias, e.getMessage());
             return alias;
         }
     }

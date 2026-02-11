@@ -118,7 +118,7 @@ public class AccountSeederServiceImpl implements AccountSeederService {
                         .build();
 
                 account = accountRepository.save(account);
-                log.info("✅ Account created: {} - {}", email, fullName);
+                // log.info("✅ Account created: {} - {}", email, fullName); // Giảm log nếu cần, hoặc giữ tùy ý
 
                 AccountRegisteredEvent event = AccountRegisteredEvent.builder()
                         .accountId(account.getId())
@@ -135,10 +135,12 @@ public class AccountSeederServiceImpl implements AccountSeederService {
                         event
                 );
 
-                log.info("📤 Event published for: {} - {}", email, fullName);
+                // log.info("📤 Event published for: {} - {}", email, fullName);
                 created++;
 
-                Thread.sleep(50);
+                if (count <= 100) {
+                    Thread.sleep(10); // Chỉ sleep ngắn nếu số lượng ít để tránh đứng thread quá lâu
+                }
 
             } catch (Exception e) {
                 log.error("❌ Failed to seed account #{}", i, e);
@@ -156,6 +158,14 @@ public class AccountSeederServiceImpl implements AccountSeederService {
 
         log.info("🌱 Seeding completed! Created: {}, Skipped: {}", created, skipped);
         return result;
+    }
+
+    @Override
+    @org.springframework.scheduling.annotation.Async
+    public void seedAccountsAsync(int count) {
+        log.info("🚀 Background seeding started for {} accounts", count);
+        seedAccounts(count);
+        log.info("🏁 Background seeding for {} accounts completed!", count);
     }
 
     private int findNextAvailableIndex() {

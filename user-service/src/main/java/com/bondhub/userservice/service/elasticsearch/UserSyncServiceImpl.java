@@ -1,7 +1,8 @@
 package com.bondhub.userservice.service.elasticsearch;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.common.enums.Role;
+import com.bondhub.common.exception.AppException;
+import com.bondhub.common.exception.ErrorCode;
 import com.bondhub.common.utils.LocalizationUtil;
 import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.config.ElasticsearchProperties;
@@ -43,6 +44,10 @@ public class UserSyncServiceImpl implements UserSyncService {
 
     @Override
     public String reindexAll() {
+        if (taskTracker.isReindexRunning()) {
+            throw new AppException(ErrorCode.EL_REINDEX_IN_PROGRESS);
+        }
+
         String taskId = UUID.randomUUID().toString();
         long totalDocs = userRepository.count();
         

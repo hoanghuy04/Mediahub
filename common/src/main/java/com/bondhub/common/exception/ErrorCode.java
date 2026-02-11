@@ -58,7 +58,8 @@ public enum ErrorCode {
         // Elasticsearch errors (23xx)
         EL_INDEX_NOT_FOUND(HttpStatus.NOT_FOUND, 2301, "error.el.index.not.found"),
         EL_CLUSTER_UNHEALTHY(HttpStatus.INTERNAL_SERVER_ERROR, 2302, "error.el.cluster.unhealthy"),
-        EL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 2303, "error.el.document.not.found")
+        EL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 2303, "error.el.document.not.found"),
+        EL_REINDEX_IN_PROGRESS(HttpStatus.CONFLICT, 2304, "error.el.reindex.in.progress")
 
         ;
 
