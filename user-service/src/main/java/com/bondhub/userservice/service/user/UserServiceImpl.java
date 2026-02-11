@@ -60,7 +60,8 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("User created successfully with id: {}", user.getId());
 
-        syncUserToIndex(user, null, null);
+        // Default role is USER for newly created users
+        syncUserToIndex(user, null, Role.USER);
 
         return userMapper.toUserResponse(user);
     }
@@ -70,7 +71,21 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with id: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        UserResponse response = userMapper.toUserResponse(user);
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        
+        return UserResponse.builder()
+                .id(response.id())
+                .fullName(response.fullName())
+                .dob(response.dob())
+                .bio(response.bio())
+                .gender(response.gender())
+                .accountInfo(response.accountInfo())
+                .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
+                .background(response.background() != null ? baseUrl + response.background() : null)
+                .backgroundY(response.backgroundY())
+                .build();
     }
 
     @Override
@@ -78,7 +93,21 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with accountId: {}", accountId);
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        UserResponse response = userMapper.toUserResponse(user);
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        
+        return UserResponse.builder()
+                .id(response.id())
+                .fullName(response.fullName())
+                .dob(response.dob())
+                .bio(response.bio())
+                .gender(response.gender())
+                .accountInfo(response.accountInfo())
+                .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
+                .background(response.background() != null ? baseUrl + response.background() : null)
+                .backgroundY(response.backgroundY())
+                .build();
     }
 
     @Override
@@ -124,8 +153,23 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserResponse> getAllUsers() {
         log.info("Fetching all users");
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        
         return userRepository.findAll().stream()
-                .map(userMapper::toUserResponse)
+                .map(user -> {
+                    UserResponse response = userMapper.toUserResponse(user);
+                    return UserResponse.builder()
+                            .id(response.id())
+                            .fullName(response.fullName())
+                            .dob(response.dob())
+                            .bio(response.bio())
+                            .gender(response.gender())
+                            .accountInfo(response.accountInfo())
+                            .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
+                            .background(response.background() != null ? baseUrl + response.background() : null)
+                            .backgroundY(response.backgroundY())
+                            .build();
+                })
                 .toList();
     }
 
@@ -300,7 +344,7 @@ public class UserServiceImpl implements UserService {
                     .fullName(user.getFullName())
                     .phoneNumber(phoneNumber)
                     .accountId(user.getAccountId())
-                    .role(role.name())
+                    .role(role != null ? role.name() : null)
                     .avatar(user.getAvatar())
                     .build();
             userSearchService.saveToToIndex(userIndex);

@@ -53,7 +53,16 @@ public enum ErrorCode {
         ACC_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, 2207, "error.acc.password.mismatch"),
         QR_SESSION_EXPIRED(HttpStatus.BAD_REQUEST, 1010, "error.qr.session.expired"),
         QR_SESSION_INVALID_STATE(HttpStatus.CONFLICT, 1011, "error.qr.session.invalid.state"),
-        QR_SESSION_UNAUTHORIZED(HttpStatus.FORBIDDEN, 1012, "error.qr.session.unauthorized")
+        QR_SESSION_UNAUTHORIZED(HttpStatus.FORBIDDEN, 1012, "error.qr.session.unauthorized"),
+
+        // Block List errors (23xx)
+        CANNOT_BLOCK_YOURSELF(HttpStatus.BAD_REQUEST, 2301, "error.block.cannot.block.yourself"),
+        USER_ALREADY_BLOCKED(HttpStatus.CONFLICT, 2302, "error.block.user.already.blocked"),
+        BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, 2303, "error.block.not.found"),
+        MESSAGE_BLOCKED(HttpStatus.FORBIDDEN, 2304, "error.block.message.blocked"),
+        CALL_BLOCKED(HttpStatus.FORBIDDEN, 2305, "error.block.call.blocked"),
+        STORY_BLOCKED(HttpStatus.FORBIDDEN, 2306, "error.block.story.blocked"),
+        COMMUNICATION_BLOCKED(HttpStatus.FORBIDDEN, 2307, "error.block.communication.blocked")
 
         ;
 
