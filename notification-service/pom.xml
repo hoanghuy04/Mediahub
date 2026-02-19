@@ -126,6 +126,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Fire base -->
+        <dependency>
+            <groupId>com.google.firebase</groupId>
+            <artifactId>firebase-admin</artifactId>
+            <version>9.4.3</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

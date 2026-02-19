@@ -1,0 +1,17 @@
+package com.bondhub.notificationservices.dto.request;
+
+import com.bondhub.notificationservices.enums.Platform;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record DeviceTokenRequest(
+    
+    @NotBlank(message = "User ID is required")
+    String userId,
+    
+    @NotBlank(message = "FCM Token is required")
+    String token,
+    
+    @NotNull(message = "Device Type is required")
+    Platform platform
+) {}

@@ -143,6 +143,10 @@ application-secret.properties
 *-secret.properties
 secrets/
 .secrets
+# Firebase Admin SDK credentials
+firebase-adminsdk.json
+*-firebase-adminsdk-*.json
+bondhub-*.json
 
 ### Database ###
 *.db
