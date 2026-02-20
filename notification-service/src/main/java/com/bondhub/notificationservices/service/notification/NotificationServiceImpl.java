@@ -1,6 +1,5 @@
 package com.bondhub.notificationservices.service.notification;
 
-import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.notificationservices.dto.request.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.NotificationResponse;
 import com.bondhub.notificationservices.enums.NotificationType;

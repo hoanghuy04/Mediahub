@@ -4,15 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateFriendRequestNotificationRequest(
 
-        @NotBlank(message = "ReceiverId must not be blank")
+        @NotBlank(message = "validation.receiver.id.required")
         String receiverId,
 
-        @NotBlank(message = "RequestId must not be blank")
+        @NotBlank(message = "validation.request.id.required")
         String requestId,
 
-        @NotBlank(message = "SenderId must not be blank")
+        @NotBlank(message = "validation.sender.id.required")
         String senderId,
 
-        @NotBlank(message = "SenderName must not be blank")
+        @NotBlank(message = "validation.sender.name.required")
         String senderName
 ) {}

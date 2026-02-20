@@ -6,12 +6,12 @@ import jakarta.validation.constraints.NotNull;
 
 public record DeviceTokenRequest(
     
-    @NotBlank(message = "User ID is required")
+    @NotBlank(message = "validation.user.id.required")
     String userId,
     
-    @NotBlank(message = "FCM Token is required")
+    @NotBlank(message = "validation.fcm.token.required")
     String token,
     
-    @NotNull(message = "Device Type is required")
+    @NotNull(message = "validation.device.platform.required")
     Platform platform
 ) {}

@@ -13,7 +13,6 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
 
 @Document("notifications")
 @CompoundIndexes({

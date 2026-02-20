@@ -13,6 +13,11 @@ spring:
         max-interval: 2000
         multiplier: 1.1
 
+  messages:
+    basename: i18n/messages,i18n/messages-notification
+    encoding: UTF-8
+    fallback-to-system-locale: false
+
 app:
   firebase:
-    config-path: ${FIREBASE_CONFIG_PATH:firebase-adminsdk.json}
+    config-path: ${FIREBASE_CONFIG_PATH}

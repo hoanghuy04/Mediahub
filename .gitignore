@@ -146,7 +146,6 @@ secrets/
 # Firebase Admin SDK credentials
 firebase-adminsdk.json
 *-firebase-adminsdk-*.json
-bondhub-*.json
 
 ### Database ###
 *.db
