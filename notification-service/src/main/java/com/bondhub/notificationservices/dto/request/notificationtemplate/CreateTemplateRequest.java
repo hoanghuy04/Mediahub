@@ -1,5 +1,6 @@
 package com.bondhub.notificationservices.dto.request.notificationtemplate;
 
+import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.enums.NotificationType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,6 +9,9 @@ public record CreateTemplateRequest(
 
         @NotNull(message = "validation.notification.type.required")
         NotificationType type,
+
+        @NotNull(message = "validation.notification.channel.required")
+        NotificationChannel channel,
 
         @NotBlank(message = "validation.notification.locale.required")
         String locale,
