@@ -21,6 +21,8 @@ public class BatchedNotificationEvent {
     List<String> actorIds;
     int actorCount;
     String firstActorId;
+    String firstActorName;
+    String firstActorAvatar;
     int othersCount;
     String locale;
 

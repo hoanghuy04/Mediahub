@@ -1,0 +1,75 @@
+package com.bondhub.notificationservices.service.batch;
+
+import com.bondhub.notificationservices.enums.BatchWindowConfig;
+import com.bondhub.notificationservices.event.RawNotificationEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class BatcherServiceImpl implements BatcherService {
+
+    static final String LOCK_PREFIX = "batch:lock:";
+    static final String LIST_PREFIX = "batch:";
+
+    StringRedisTemplate stringRedisTemplate;
+    BatchScheduler batchScheduler;
+
+    ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    @Override
+    public boolean buffer(RawNotificationEvent event) {
+        BatchWindowConfig cfg = BatchWindowConfig.of(event.getType());
+
+        if (!cfg.isBatchable()) return false;
+
+        String batchKey = buildBatchKey(event);
+        String lockKey  = LOCK_PREFIX + batchKey;
+        String listKey  = LIST_PREFIX + batchKey;
+
+        Boolean isNewBatch = stringRedisTemplate.opsForValue()
+                .setIfAbsent(lockKey, "1", Duration.ofSeconds(cfg.getWindowSeconds()));
+
+        if (Boolean.TRUE.equals(isNewBatch)) {
+            log.debug("New batch window opened: key={}, window={}s", batchKey, cfg.getWindowSeconds());
+            batchScheduler.scheduleFlush(batchKey, cfg.getWindowSeconds());
+        }
+
+        String serialized = serialize(event);
+        if (serialized != null) {
+            stringRedisTemplate.opsForList().rightPush(listKey, serialized);
+        }
+
+        return Boolean.TRUE.equals(isNewBatch);
+    }
+
+
+    public static String buildBatchKey(RawNotificationEvent event) {
+        return event.getType().name() + ":" + event.getRecipientId();
+    }
+
+    private String serialize(RawNotificationEvent event) {
+        try {
+            return objectMapper.writeValueAsString(event);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize event", e);
+            return null;
+        }
+    }
+
+
+}

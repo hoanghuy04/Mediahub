@@ -16,13 +16,12 @@ public class RawNotificationEvent {
 
     String recipientId;
     String actorId;
+    String actorName;
+    String actorAvatar;
     NotificationType type;
     String referenceId;
 
     Map<String, Object> payload;
-
-    @Builder.Default
-    String locale = "vi";
 
     LocalDateTime occurredAt;
 }
