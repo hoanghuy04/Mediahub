@@ -2,7 +2,7 @@ package com.bondhub.notificationservices.batch;
 
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.event.RawNotificationEvent;
-import com.bondhub.notificationservices.service.delivery.DeliveryService;
+import com.bondhub.notificationservices.publisher.ReadyNotificationPublisher;
 import com.bondhub.notificationservices.service.preference.UserPreferenceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
     static final String LIST_PREFIX = "batch:";
 
     StringRedisTemplate stringRedisTemplate;
-    DeliveryService deliveryService;
+    ReadyNotificationPublisher readyPublisher;  // Queue 2 producer
     UserPreferenceService userPreferenceService;
 
     ObjectMapper objectMapper = new ObjectMapper()
@@ -91,8 +91,8 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                 .batchedAt(LocalDateTime.now())
                 .build();
 
-        deliveryService.deliver(batched);
-        log.info("Batch flushed: key={}, actors={}", batchKey, actorCount);
+        readyPublisher.publish(batched);   // → Queue 2 → ReadyNotificationConsumer → FCM
+        log.info("Batch flushed → Queue2: key={}, actors={}", batchKey, actorCount);
     }
 
     private RawNotificationEvent deserialize(String json) {

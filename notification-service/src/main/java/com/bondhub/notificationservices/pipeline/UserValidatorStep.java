@@ -24,11 +24,10 @@ public class UserValidatorStep implements PipelineStep {
             return false;
         }
 
-        // TODO: uncomment when user-service is available
-        // if(!userServiceClient.existsById(event.getRecipientId()).hasBody()) {
-        //     log.warn("Drop event: recipient not found, type={}", event.getType());
-        //     return false;
-        // }
+         if(!userServiceClient.existsById(event.getRecipientId()).hasBody()) {
+             log.warn("Drop event: recipient not found, type={}", event.getType());
+             return false;
+         }
 
         return true;
     }

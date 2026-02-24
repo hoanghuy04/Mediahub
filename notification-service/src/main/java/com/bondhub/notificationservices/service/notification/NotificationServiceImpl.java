@@ -3,25 +3,14 @@ package com.bondhub.notificationservices.service.notification;
 import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
 import com.bondhub.notificationservices.enums.NotificationType;
-import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.event.RawNotificationEvent;
-import com.bondhub.notificationservices.pipeline.NotificationBatcherStep;
-import com.bondhub.notificationservices.pipeline.UserPreferenceCheckerStep;
-import com.bondhub.notificationservices.pipeline.UserValidatorStep;
-import com.bondhub.notificationservices.service.delivery.DeliveryService;
+import com.bondhub.notificationservices.publisher.RawNotificationPublisher;
 import com.bondhub.notificationservices.service.notification.assembler.NotificationAssemblerResolver;
-import com.bondhub.notificationservices.service.preference.UserPreferenceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,51 +19,18 @@ import java.util.Map;
 public class NotificationServiceImpl implements NotificationService {
 
     NotificationAssemblerResolver assemblerResolver;
-    UserValidatorStep userValidatorStep;
-    NotificationBatcherStep notificationBatcherStep;
-    UserPreferenceCheckerStep userPreferenceCheckerStep;
-    DeliveryService deliveryService;
-    UserPreferenceService userPreferenceService;
+    RawNotificationPublisher rawPublisher;
 
     @Override
-    public NotificationAcceptedResponse createFriendRequestNotification(CreateFriendRequestNotificationRequest request) {
-        return process(NotificationType.FRIEND_REQUEST, request);
+    public NotificationAcceptedResponse createFriendRequestNotification(
+            CreateFriendRequestNotificationRequest request) {
+        return enqueue(NotificationType.FRIEND_REQUEST, request);
     }
 
-    private NotificationAcceptedResponse process(NotificationType type, Object request) {
+    private NotificationAcceptedResponse enqueue(NotificationType type, Object request) {
         RawNotificationEvent event = assemblerResolver.get(type).build(request);
-        log.info("Processing notification: type={}, recipient={}", type, event.getRecipientId());
-
-        if (!userValidatorStep.process(event)) return NotificationAcceptedResponse.queued();
-        if (!notificationBatcherStep.process(event)) return NotificationAcceptedResponse.queued();
-        if (!userPreferenceCheckerStep.process(event)) return NotificationAcceptedResponse.queued();
-
-        deliveryService.deliver(toImmediate(event));
-        return NotificationAcceptedResponse.immediate();
-    }
-
-    private BatchedNotificationEvent toImmediate(RawNotificationEvent event) {
-        String locale = userPreferenceService.getLocale(event.getRecipientId());
-
-        Map<String, Object> payload = new HashMap<>(
-                event.getPayload() != null ? event.getPayload() : Collections.emptyMap()
-        );
-        payload.put("actorId",     event.getActorId());
-        payload.put("referenceId", event.getReferenceId());
-        payload.put("occurredAt",  event.getOccurredAt() != null ? event.getOccurredAt().toString() : null);
-
-        return BatchedNotificationEvent.builder()
-                .recipientId(event.getRecipientId())
-                .type(event.getType())
-                .actorIds(List.of(event.getActorId()))
-                .actorCount(1)
-                .firstActorId(event.getActorId())
-                .firstActorName(event.getActorName())
-                .firstActorAvatar(event.getActorAvatar())
-                .othersCount(0)
-                .locale(locale)
-                .rawPayloads(List.of(payload))
-                .batchedAt(LocalDateTime.now())
-                .build();
+        log.info("[API] Enqueueing notification: type={}, recipient={}", type, event.getRecipientId());
+        rawPublisher.publish(event);
+        return NotificationAcceptedResponse.queued();
     }
 }
