@@ -37,20 +37,34 @@ public class InAppDeliveryHandler implements DeliveryHandler {
 
         List<String> actorIds = event.getActorIds() != null ? event.getActorIds() : List.of();
 
-        Notification notification = Notification.builder()
-                .userId(event.getRecipientId())
-                .type(event.getType())
-                .referenceId(null)
-                .title(title)
-                .body(body)
-                .actorIds(actorIds)
-                .data(buildData(event))
-                .isRead(false)
-                .build();
-
-        notificationRepository.save(notification);
-        log.info("IN_APP saved: recipientId={}, type={}, actorCount={}",
-                event.getRecipientId(), event.getType(), event.getActorCount());
+        notificationRepository.findByUserIdAndTypeAndReferenceId(event.getRecipientId(), event.getType(), null)
+                .ifPresentOrElse(
+                        existing -> {
+                            existing.setTitle(title);
+                            existing.setBody(body);
+                            existing.setActorIds(actorIds);
+                            existing.setData(buildData(event));
+                            existing.setRead(false);
+                            notificationRepository.save(existing);
+                            log.info("IN_APP updated: recipientId={}, type={}, actorCount={}",
+                                    event.getRecipientId(), event.getType(), event.getActorCount());
+                        },
+                        () -> {
+                            Notification notification = Notification.builder()
+                                    .userId(event.getRecipientId())
+                                    .type(event.getType())
+                                    .referenceId(null)
+                                    .title(title)
+                                    .body(body)
+                                    .actorIds(actorIds)
+                                    .data(buildData(event))
+                                    .isRead(false)
+                                    .build();
+                            notificationRepository.save(notification);
+                            log.info("IN_APP created: recipientId={}, type={}, actorCount={}",
+                                    event.getRecipientId(), event.getType(), event.getActorCount());
+                        }
+                );
 
         // TODO: push realtime to client via WebSocket (if online)
     }

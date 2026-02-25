@@ -11,6 +11,8 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.WebpushConfig;
+import com.google.firebase.messaging.WebpushNotification;
 import org.springframework.retry.support.RetryTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -65,7 +67,6 @@ public class FcmDeliveryHandler implements DeliveryHandler {
         Notification fcmNotification = Notification.builder()
                 .setTitle(title)
                 .setBody(body)
-                .setImage(event.getFirstActorAvatar())
                 .build();
 
         for (UserDevice device : devices) {
@@ -77,6 +78,12 @@ public class FcmDeliveryHandler implements DeliveryHandler {
         Message message = Message.builder()
                 .setToken(device.getFcmToken())
                 .setNotification(fcmNotification)
+                .setWebpushConfig(WebpushConfig.builder()
+                        .setNotification(WebpushNotification.builder()
+                                .setIcon(event.getFirstActorAvatar() != null ? event.getFirstActorAvatar() : "/images/logo.png")
+                                .setBadge("/images/logo.png")
+                                .build())
+                        .build())
                 .putData("type",        event.getType().name())
                 .putData("actorId",     event.getFirstActorId())
                 .putData("actorName",   event.getFirstActorName()   != null ? event.getFirstActorName()   : "")
