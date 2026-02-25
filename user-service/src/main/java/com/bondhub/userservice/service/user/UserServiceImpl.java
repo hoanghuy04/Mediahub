@@ -22,14 +22,13 @@ import com.bondhub.userservice.dto.response.UserImageResponse;
 import com.bondhub.userservice.mapper.UserMapper;
 import com.bondhub.userservice.mapper.UserProfileMapper;
 import com.bondhub.userservice.model.User;
-import com.bondhub.userservice.model.elasticsearch.UserIndex;
+import com.bondhub.userservice.publisher.UserIndexEventPublisher;
 import com.bondhub.userservice.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -45,7 +44,7 @@ public class UserServiceImpl implements UserService {
     final SecurityUtil securityUtil;
     final UserProfileMapper userProfileMapper;
     final FileServiceClient fileServiceClient;
-    final UserSearchService userSearchService;
+    final UserIndexEventPublisher userIndexEventPublisher;
 
     @Value("${aws.s3.bucket.name}")
     String bucketName;
@@ -60,7 +59,7 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("User created successfully with id: {}", user.getId());
 
-        syncUserToIndex(user, null, null);
+        publishUserIndexEvent(user, null);
 
         return userMapper.toUserResponse(user);
     }
@@ -152,7 +151,7 @@ public class UserServiceImpl implements UserService {
 
         log.info("User profile updated successfully for account: {}", accountId);
 
-        syncUserToIndex(user, accountResponse != null ? accountResponse.phoneNumber() : null, null);
+        publishUserIndexEvent(user, accountResponse);
 
         return getUserProfileResponseWithUrl(user, accountResponse);
     }
@@ -160,7 +159,7 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse getUserProfileResponseWithUrl(User user, AccountResponse accountResponse) {
         UserProfileResponse response = userProfileMapper.toUserProfileResponse(user, accountResponse);
         String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
-        
+
         return UserProfileResponse.builder()
                 .id(response.id())
                 .phoneNumber(response.phoneNumber())
@@ -172,6 +171,7 @@ public class UserServiceImpl implements UserService {
                 .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
                 .background(response.background() != null ? baseUrl + response.background() : null)
                 .backgroundY(response.backgroundY())
+                .role(accountResponse != null ? accountResponse.role() : null)
                 .build();
     }
 
@@ -203,7 +203,7 @@ public class UserServiceImpl implements UserService {
 
             log.info("Avatar updated successfully for user: {}", accountId);
 
-            syncUserToIndex(user, null, null);
+            publishUserIndexEvent(user, null);
 
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return userMapper.toAvatarResponse(user, baseUrl);
@@ -240,6 +240,9 @@ public class UserServiceImpl implements UserService {
             }
 
             log.info("Background updated successfully for user: {}", accountId);
+
+            publishUserIndexEvent(user, null);
+
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return userMapper.toBackgroundResponse(user, baseUrl);
         }
@@ -276,38 +279,24 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
         log.info("User deleted successfully with id: {}", id);
 
-        // Delete from Elasticsearch
         try {
-            userSearchService.deleteFromIndex(id);
+            userIndexEventPublisher.publishDeleteRequest(id);
         } catch (Exception e) {
             log.error("Failed to delete user from Elasticsearch index: {}", id, e);
         }
     }
 
-    @Override
-    public void indexUserToElasticsearch(UserIndexRequest request) {
-        log.info("Indexing user to Elasticsearch: userId={}, phoneNumber={}, role={}", 
-                request.userId(), request.phoneNumber(), request.role());
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        syncUserToIndex(user, request.phoneNumber(), request.role());
+    private void publishUserIndexEvent(User user, AccountResponse accountResponse) {
+        userIndexEventPublisher.publishIndexRequest(UserIndexRequest.builder()
+                .userId(user.getId())
+                .accountId(user.getAccountId())
+                .fullName(user.getFullName())
+                .avatar(user.getAvatar())
+                .phoneNumber(accountResponse != null ? accountResponse.phoneNumber() : null)
+                .role(accountResponse != null ? Role.valueOf(accountResponse.role()) : null)
+                .build());
     }
 
-    private void syncUserToIndex(User user, String phoneNumber, Role role) {
-        try {
-            UserIndex userIndex = UserIndex.builder()
-                    .id(user.getId())
-                    .fullName(user.getFullName())
-                    .phoneNumber(phoneNumber)
-                    .accountId(user.getAccountId())
-                    .role(role.name())
-                    .avatar(user.getAvatar())
-                    .build();
-            userSearchService.saveToToIndex(userIndex);
-        } catch (Exception e) {
-            log.error("Failed to sync user to Elasticsearch index: {}", user.getId(), e);
-        }
-    }
 
     @Override
     public boolean existsById(String userId) {

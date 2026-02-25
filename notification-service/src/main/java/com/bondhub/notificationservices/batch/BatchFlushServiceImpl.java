@@ -28,7 +28,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
     static final String LIST_PREFIX = "batch:";
 
     StringRedisTemplate stringRedisTemplate;
-    ReadyNotificationPublisher readyPublisher;  // Queue 2 producer
+    ReadyNotificationPublisher readyPublisher; 
     UserPreferenceService userPreferenceService;
 
     ObjectMapper objectMapper = new ObjectMapper()

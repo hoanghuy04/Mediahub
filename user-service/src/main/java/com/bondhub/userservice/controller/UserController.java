@@ -10,9 +10,8 @@ import com.bondhub.userservice.dto.response.UserProfileResponse;
 import com.bondhub.userservice.dto.response.UserResponse;
 import com.bondhub.common.dto.PageResponse;
 import com.bondhub.common.dto.client.userservice.user.response.UserSummaryResponse;
-import com.bondhub.userservice.model.elasticsearch.UserIndex;
+import com.bondhub.userservice.service.elasticsearch.UserSearchService;
 import com.bondhub.userservice.service.user.UserService;
-import com.bondhub.userservice.service.user.UserSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -97,6 +96,8 @@ public class UserController {
     public ResponseEntity<ApiResponse<PageResponse<List<UserSummaryResponse>>>> searchUsers(
             @RequestParam String keyword,
             @PageableDefault(size = 10) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(userSearchService.searchUsers(keyword, pageable)));
+        PageResponse<List<UserSummaryResponse>> result =
+                userSearchService.searchUsers(keyword, pageable);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
