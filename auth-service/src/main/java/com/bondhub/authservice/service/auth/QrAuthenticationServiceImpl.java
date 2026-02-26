@@ -4,6 +4,7 @@ import com.bondhub.authservice.client.UserServiceClient;
 import com.bondhub.authservice.config.QrProperties;
 import com.bondhub.authservice.dto.auth.request.QrMobileRequest;
 import com.bondhub.authservice.dto.auth.response.QrGenerationResponse;
+import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.enums.QrSessionStatus;
 import com.bondhub.authservice.model.Account;
@@ -17,6 +18,8 @@ import com.bondhub.common.dto.client.userservice.user.response.UserSummaryRespon
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
 import com.bondhub.common.utils.JwtUtil;
+import com.bondhub.authservice.util.TokenProvider;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,6 +45,9 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
 
     QrSessionRepository qrSessionRepository;
     AccountRepository accountRepository;
+    TokenProvider tokenProvider;
+
+
 
     @Override
     public QrGenerationResponse generateQr(String deviceId, String userAgent, String ipAddress) {
@@ -128,36 +134,20 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         Account account = accountRepository.findById(currentAccountId)
                 .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
 
-        String sessionId = UUID.randomUUID().toString();
-        long refreshExpirationMs = jwtUtil.getWebRefreshExpirationMs();
+        TokenResponse tokenResponse = tokenProvider.generateFullTokenResponse(
 
-        String accessToken = jwtUtil.generateAccessToken(
-                account.getId(),
-                account.getEmail(),
-                account.getRole(),
-                sessionId
-        );
-        String refreshToken = jwtUtil.generateRefreshToken(
-                account.getId(),
-                sessionId,
-                refreshExpirationMs
-        );
-
-        tokenStoreService.createRefreshSession(
-                sessionId,
-                account.getId(),
-                account.getPhoneNumber(),
+                account,
                 session.getDeviceId(),
                 DeviceType.WEB,
-                refreshToken,
                 session.getUserAgent(),
-                session.getIpAddress(),
-                refreshExpirationMs / 1000
+                session.getIpAddress()
         );
 
         session.setStatus(QrSessionStatus.CONFIRMED);
-        session.setWebAccessToken(accessToken);
-        session.setWebRefreshToken(refreshToken);
+        session.setWebAccessToken(tokenResponse.accessToken());
+        session.setWebRefreshToken(tokenResponse.refreshToken());
+        session.setRefreshTokenExpirationMs(tokenResponse.refreshTokenExpirationMs());
+
 
         qrSessionRepository.save(session);
         qrWaitService.notifyUpdateQrStatus(qrId, session);
