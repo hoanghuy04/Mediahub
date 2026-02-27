@@ -7,17 +7,21 @@ import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationGroupResponse;
+import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.enums.NotificationType;
 import com.bondhub.notificationservices.event.RawNotificationEvent;
 import com.bondhub.notificationservices.mapper.NotificationMapper;
 import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.publisher.RawNotificationPublisher;
 import com.bondhub.notificationservices.repository.NotificationRepository;
+import com.bondhub.notificationservices.service.delivery.handler.InAppDeliveryHandler;
 import com.bondhub.notificationservices.service.notification.assembler.NotificationAssemblerResolver;
+import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +34,7 @@ import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -43,6 +48,8 @@ public class NotificationServiceImpl implements NotificationService {
     MongoTemplate mongoTemplate;
     NotificationMapper notificationMapper;
     SecurityUtil securityUtil;
+    NotificationTemplateService templateService;
+    InAppDeliveryHandler inAppDeliveryHandler;
 
     @Override
     public NotificationAcceptedResponse createFriendRequestNotification(
@@ -53,13 +60,45 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public PageResponse<List<NotificationGroupResponse>> getMyNotifications(Pageable pageable) {
         String userId = securityUtil.getCurrentUserId();
+        String locale = LocaleContextHolder.getLocale().getLanguage();
         Criteria criteria = Criteria.where("userId").is(userId);
 
         long total = mongoTemplate.count(new Query(criteria), Notification.class);
-        List<Notification> notifications = mongoTemplate.find(new Query(criteria).with(pageable), Notification.class);
+        List<Notification> notifications = mongoTemplate.find(
+                new Query(criteria).with(pageable),
+                Notification.class
+        );
 
-        Page<Notification> raw = new PageImpl<>(notifications, pageable, total);
-        return PageResponse.fromPage(raw, notificationMapper::toGroupResponse);
+        List<NotificationGroupResponse> content = notifications.stream()
+                .map(n -> {
+                    NotificationGroupResponse res = notificationMapper.toGroupResponse(n);
+                    String title = templateService.renderTitle(
+                            n.getType(),
+                            NotificationChannel.IN_APP,
+                            locale,
+                            n.getData()
+                    );
+                    String body = templateService.renderBody(
+                            n.getType(),
+                            NotificationChannel.IN_APP,
+                            locale,
+                            n.getData()
+                    );
+                    return new NotificationGroupResponse(
+                            res.id(),
+                            res.type(),
+                            res.referenceId(),
+                            title,
+                            body,
+                            res.actorIds(),
+                            res.actorCount(),
+                            res.isRead(),
+                            res.lastModifiedAt()
+                    );
+                }).toList();
+
+        Page<NotificationGroupResponse> page = new PageImpl<>(content, pageable, total);
+        return PageResponse.fromPage(page, i -> i);
     }
 
     private NotificationAcceptedResponse enqueue(NotificationType type, Object request) {

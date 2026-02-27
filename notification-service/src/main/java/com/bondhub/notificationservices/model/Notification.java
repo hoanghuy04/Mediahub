@@ -17,8 +17,8 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @Document("notifications")
 @CompoundIndexes({
-        @CompoundIndex(name = "user_created_idx",
-                def = "{'userId': 1, 'createdAt': -1}"),
+        @CompoundIndex(name = "user_last_modified_idx",
+                def = "{'userId': 1, 'lastModifiedAt': -1}"),
         @CompoundIndex(name = "user_unread_idx",
                 def = "{'userId': 1, 'isRead': 1}"),
         @CompoundIndex(name = "user_type_reference_unique",
@@ -41,10 +41,6 @@ public class Notification extends BaseModel {
 
     @Field(targetType = FieldType.OBJECT_ID)
     String referenceId;
-
-    String title;
-
-    String body;
 
     @Field(targetType = FieldType.OBJECT_ID)
     List<String> actorIds;

@@ -4,7 +4,6 @@ import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.repository.NotificationRepository;
-import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -27,7 +26,6 @@ import java.util.*;
 public class InAppDeliveryHandler {
 
     NotificationRepository notificationRepository;
-    NotificationTemplateService templateService;
     MongoTemplate mongoTemplate;
 
     public Notification persistAndReturn(BatchedNotificationEvent event) {
@@ -40,15 +38,11 @@ public class InAppDeliveryHandler {
         int actorCount = 1;
         int othersCount = 0;
 
-        Map<String, Object> tplData = buildTplData(event, actorCount, othersCount);
-
         Notification notification = Notification.builder()
                 .userId(event.getRecipientId())
                 .type(event.getType())
                 .referenceId(event.getReferenceId())
                 .actorIds(new ArrayList<>(List.of(event.getLastActorId())))
-                .title(templateService.renderTitle(event.getType(), NotificationChannel.IN_APP, event.getLocale(), tplData))
-                .body(templateService.renderBody(event.getType(), NotificationChannel.IN_APP, event.getLocale(), tplData))
                 .data(buildData(event.getLastActorId(), event.getLastActorName(), event.getLastActorAvatar(), actorCount, othersCount))
                 .isRead(false)
                 .build();
@@ -99,10 +93,6 @@ public class InAppDeliveryHandler {
         int othersCount = actorCount - 1;
         String lastActorId = finalActors.getLast();
 
-        Map<String, Object> tplData = buildTplData(event, actorCount, othersCount);
-
-        persisted.setTitle(templateService.renderTitle(event.getType(), NotificationChannel.IN_APP, event.getLocale(), tplData));
-        persisted.setBody(templateService.renderBody(event.getType(), NotificationChannel.IN_APP, event.getLocale(), tplData));
         persisted.setData(buildData(lastActorId, event.getLastActorName(), event.getLastActorAvatar(), actorCount, othersCount));
 
         notificationRepository.save(persisted);
@@ -111,21 +101,15 @@ public class InAppDeliveryHandler {
         return persisted;
     }
 
-    private Map<String, Object> buildTplData(BatchedNotificationEvent event, int actorCount, int othersCount) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("firstName", event.getLastActorName() != null ? event.getLastActorName() : event.getLastActorId());
-        data.put("count", actorCount);
-        data.put("othersCount", othersCount);
-        return data;
-    }
-
     private Map<String, Object> buildData(String actorId, String actorName, String actorAvatar, int actorCount, int othersCount) {
         Map<String, Object> data = new HashMap<>();
         data.put("actorId", actorId);
         data.put("actorName", actorName);
+        data.put("firstName", actorName != null ? actorName : actorId);
         data.put("actorAvatar", actorAvatar);
         data.put("actorCount", actorCount);
         data.put("othersCount", othersCount);
+        data.put("count", actorCount);
         return data;
     }
 }

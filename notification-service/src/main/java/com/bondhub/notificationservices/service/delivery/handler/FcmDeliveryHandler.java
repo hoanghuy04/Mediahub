@@ -1,5 +1,6 @@
 package com.bondhub.notificationservices.service.delivery.handler;
 
+import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.model.UserDevice;
 import com.bondhub.notificationservices.repository.UserDeviceRepository;
@@ -37,6 +38,7 @@ public class FcmDeliveryHandler {
     UserDeviceRepository userDeviceRepository;
     NotificationTemplateService templateService;
     PresenceService presenceService;
+    com.bondhub.notificationservices.service.preference.UserPreferenceService userPreferenceService;
 
     public void push(Notification persisted) {
         String recipientId = persisted.getUserId();
@@ -52,8 +54,10 @@ public class FcmDeliveryHandler {
             return;
         }
 
-        String title = persisted.getTitle();
-        String body = persisted.getBody();
+        String locale = userPreferenceService.getLocale(recipientId);
+        String title = templateService.renderTitle(persisted.getType(), NotificationChannel.FCM, locale, persisted.getData());
+        String body = templateService.renderBody(persisted.getType(), NotificationChannel.FCM, locale, persisted.getData());
+
         int actorCount = persisted.getActorIds() != null ? persisted.getActorIds().size() : 0;
         int othersCount = Math.max(0, actorCount - 1);
 
