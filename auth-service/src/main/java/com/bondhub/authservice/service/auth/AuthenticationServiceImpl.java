@@ -16,6 +16,7 @@ import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.model.Account;
 import com.bondhub.common.dto.client.userservice.user.request.UserCreateRequest;
 import com.bondhub.common.event.account.AccountRegisteredEvent;
+import com.bondhub.common.event.user.UserIndexEvent;
 import com.bondhub.common.model.kafka.EventType;
 import com.bondhub.authservice.model.redis.PendingRegistration;
 import com.bondhub.authservice.repository.AccountRepository;
@@ -57,6 +58,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     UserServiceClient userServiceClient;
     MessageSource messageSource;
     TokenProvider tokenProvider;
+    com.bondhub.common.publisher.OutboxEventPublisher outboxEventPublisher;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -301,6 +303,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             if (response != null && response.data() != null) {
                 userId = response.data().id();
                 log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), userId);
+                
+                UserIndexEvent indexEvent = UserIndexEvent.builder()
+                        .userId(userId)
+                        .phoneNumber(account.getPhoneNumber())
+                        .role(account.getRole())
+                        .build();
+
+                outboxEventPublisher.saveAndPublish(
+                        userId,
+                        "User",
+                        EventType.USER_INDEX,
+                        indexEvent
+                );
+                log.info("📤 Published USER_INDEX event for userId: {}", userId);
             }
         } catch (Exception e) {
             log.error("❌ Failed to create user profile via API for accountId: {}", account.getId(), e);
