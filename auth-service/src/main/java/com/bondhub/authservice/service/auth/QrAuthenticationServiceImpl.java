@@ -4,7 +4,6 @@ import com.bondhub.authservice.client.UserServiceClient;
 import com.bondhub.authservice.config.QrProperties;
 import com.bondhub.authservice.dto.auth.request.QrMobileRequest;
 import com.bondhub.authservice.dto.auth.response.QrGenerationResponse;
-import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.enums.DeviceType;
 import com.bondhub.authservice.enums.QrSessionStatus;
 import com.bondhub.authservice.model.Account;
@@ -19,7 +18,7 @@ import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
 import com.bondhub.common.utils.JwtUtil;
 import com.bondhub.authservice.util.TokenProvider;
-
+import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -46,8 +45,6 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
     QrSessionRepository qrSessionRepository;
     AccountRepository accountRepository;
     TokenProvider tokenProvider;
-
-
 
     @Override
     public QrGenerationResponse generateQr(String deviceId, String userAgent, String ipAddress) {
@@ -135,19 +132,16 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
                 .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
 
         TokenResponse tokenResponse = tokenProvider.generateFullTokenResponse(
-
                 account,
                 session.getDeviceId(),
                 DeviceType.WEB,
                 session.getUserAgent(),
-                session.getIpAddress()
-        );
+                session.getIpAddress());
 
         session.setStatus(QrSessionStatus.CONFIRMED);
         session.setWebAccessToken(tokenResponse.accessToken());
         session.setWebRefreshToken(tokenResponse.refreshToken());
         session.setRefreshTokenExpirationMs(tokenResponse.refreshTokenExpirationMs());
-
 
         qrSessionRepository.save(session);
         qrWaitService.notifyUpdateQrStatus(qrId, session);
@@ -184,7 +178,7 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
         if (qrContent == null || qrContent.isBlank()) {
             throw new AppException(ErrorCode.QR_SESSION_INVALID_STATE);
         }
-        
+
         if (qrContent.startsWith(qrProperties.getContentPrefix())) {
             String extractedId = qrContent.substring(qrProperties.getContentPrefix().length());
             if (extractedId.isBlank()) {
@@ -192,7 +186,7 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
             }
             return extractedId;
         }
-        
+
         return qrContent;
     }
 }
