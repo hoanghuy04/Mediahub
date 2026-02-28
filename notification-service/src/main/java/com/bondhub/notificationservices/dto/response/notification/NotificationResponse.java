@@ -1,16 +1,20 @@
 package com.bondhub.notificationservices.dto.response.notification;
 
 import com.bondhub.notificationservices.enums.NotificationType;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
 
+@Builder
 public record NotificationResponse(
         String id,
-        String userId,
         NotificationType type,
         String referenceId,
         String title,
         String body,
-        boolean isRead
+        List<String> actorIds,
+        int actorCount,
+        boolean read,
+        LocalDateTime lastModifiedAt
 ) {}

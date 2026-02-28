@@ -1,12 +1,11 @@
 package com.bondhub.notificationservices.service.notification;
 
-import com.bondhub.common.dto.PageResponse;
-import com.bondhub.common.exception.AppException;
-import com.bondhub.common.exception.ErrorCode;
+import com.bondhub.common.utils.LocalizationUtil;
 import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
-import com.bondhub.notificationservices.dto.response.notification.NotificationGroupResponse;
+import com.bondhub.notificationservices.dto.response.notification.NotificationHistoryResponse;
+import com.bondhub.notificationservices.dto.response.notification.NotificationResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.enums.NotificationType;
 import com.bondhub.notificationservices.event.RawNotificationEvent;
@@ -21,20 +20,16 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
-import org.bson.types.ObjectId;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -42,12 +37,16 @@ import java.util.Map;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationServiceImpl implements NotificationService {
 
+    static final Duration FRESH_WINDOW = Duration.ofHours(2);
+    static final Duration GAP_THRESHOLD = Duration.ofHours(2);
+
     NotificationAssemblerResolver assemblerResolver;
     RawNotificationPublisher rawPublisher;
     NotificationRepository notificationRepository;
     MongoTemplate mongoTemplate;
     NotificationMapper notificationMapper;
     SecurityUtil securityUtil;
+    LocalizationUtil localizationUtil;
     NotificationTemplateService templateService;
     InAppDeliveryHandler inAppDeliveryHandler;
 
@@ -57,48 +56,85 @@ public class NotificationServiceImpl implements NotificationService {
         return enqueue(NotificationType.FRIEND_REQUEST, request);
     }
 
-    @Override
-    public PageResponse<List<NotificationGroupResponse>> getMyNotifications(Pageable pageable) {
-        String userId = securityUtil.getCurrentUserId();
-        String locale = LocaleContextHolder.getLocale().getLanguage();
-        Criteria criteria = Criteria.where("userId").is(userId);
 
-        long total = mongoTemplate.count(new Query(criteria), Notification.class);
-        List<Notification> notifications = mongoTemplate.find(
-                new Query(criteria).with(pageable),
-                Notification.class
+    @Override
+    public NotificationHistoryResponse getNotificationHistory(LocalDateTime cursor, int limit) {
+        String userId = securityUtil.getCurrentUserId();
+        String locale = localizationUtil.getCurrentLocale();
+
+        Query query = new Query(Criteria.where("userId").is(userId));
+        
+        if (cursor != null) {
+            query.addCriteria(Criteria.where("lastModifiedAt").lt(cursor));
+        }
+        
+        query.with(Sort.by(Sort.Direction.DESC, "lastModifiedAt")).limit(limit);
+
+        List<Notification> notifications = mongoTemplate.find(query, Notification.class);
+
+        return groupAndRender(notifications, locale);
+    }
+
+    private NotificationHistoryResponse groupAndRender(List<Notification> notifications, String locale) {
+        if (notifications.isEmpty()) {
+            return new NotificationHistoryResponse(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), null);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime twoHoursAgo = now.minus(FRESH_WINDOW);
+        LocalDateTime startOfToday = now.toLocalDate().atStartOfDay();
+
+        List<NotificationResponse> newest = new ArrayList<>();
+        List<NotificationResponse> today = new ArrayList<>();
+        List<NotificationResponse> previous = new ArrayList<>();
+
+        for (Notification n : notifications) {
+            NotificationResponse res = convertToResponse(n, locale);
+            LocalDateTime time = n.getLastModifiedAt();
+
+            if (time.isAfter(twoHoursAgo)) {
+                newest.add(res);
+            } else if (time.isAfter(startOfToday)) {
+                today.add(res);
+            } else {
+                previous.add(res);
+            }
+        }
+
+        return buildResponse(newest, today, previous, notifications);
+    }
+
+    private NotificationHistoryResponse buildResponse(
+            List<NotificationResponse> newest,
+            List<NotificationResponse> today,
+            List<NotificationResponse> previous,
+            List<Notification> source
+    ) {
+        LocalDateTime nextCursor = source.isEmpty() ? null : source.get(source.size() - 1).getLastModifiedAt();
+        return new NotificationHistoryResponse(
+                newest != null ? newest : new ArrayList<>(),
+                today != null ? today : new ArrayList<>(),
+                previous != null ? previous : new ArrayList<>(),
+                nextCursor
+        );
+    }
+
+    private NotificationResponse convertToResponse(Notification n, String locale) {
+        String title = templateService.renderTitle(
+                n.getType(),
+                NotificationChannel.IN_APP,
+                locale,
+                n.getData()
         );
 
-        List<NotificationGroupResponse> content = notifications.stream()
-                .map(n -> {
-                    NotificationGroupResponse res = notificationMapper.toGroupResponse(n);
-                    String title = templateService.renderTitle(
-                            n.getType(),
-                            NotificationChannel.IN_APP,
-                            locale,
-                            n.getData()
-                    );
-                    String body = templateService.renderBody(
-                            n.getType(),
-                            NotificationChannel.IN_APP,
-                            locale,
-                            n.getData()
-                    );
-                    return new NotificationGroupResponse(
-                            res.id(),
-                            res.type(),
-                            res.referenceId(),
-                            title,
-                            body,
-                            res.actorIds(),
-                            res.actorCount(),
-                            res.isRead(),
-                            res.lastModifiedAt()
-                    );
-                }).toList();
+        String body = templateService.renderBody(
+                n.getType(),
+                NotificationChannel.IN_APP,
+                locale,
+                n.getData()
+        );
 
-        Page<NotificationGroupResponse> page = new PageImpl<>(content, pageable, total);
-        return PageResponse.fromPage(page, i -> i);
+        return notificationMapper.toResponse(n, title, body);
     }
 
     private NotificationAcceptedResponse enqueue(NotificationType type, Object request) {

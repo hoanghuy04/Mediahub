@@ -88,7 +88,7 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
                               String locale, Map<String, Object> data) {
         NotificationTemplate template = notificationTemplateRepository
                 .findByTypeAndChannelAndLocaleAndActiveTrue(type, channel, locale)
-                .orElseThrow();
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND));
 
         return templateEngine.render(template.getTitleTemplate(), data);
     }
@@ -98,7 +98,7 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
                              String locale, Map<String, Object> data) {
         NotificationTemplate template = notificationTemplateRepository
                 .findByTypeAndChannelAndLocaleAndActiveTrue(type, channel, locale)
-                .orElseThrow();
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND));
 
         return templateEngine.render(template.getBodyTemplate(), data);
     }

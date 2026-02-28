@@ -12,4 +12,5 @@ import java.time.LocalDateTime;
 public interface NotificationRepository extends MongoRepository<Notification, String> {
 
 
+    int countByUserId(String targetUserId);
 }
