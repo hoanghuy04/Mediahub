@@ -5,6 +5,7 @@ import com.bondhub.notificationservices.dto.request.notification.CreateFriendReq
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationHistoryResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationResponse;
+import com.bondhub.notificationservices.dto.response.notification.UserNotificationStateResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -18,4 +19,12 @@ public interface NotificationService {
             LocalDateTime cursor,
             int limit
     );
+
+    UserNotificationStateResponse getNotificationState();
+
+    void markHistoryAsChecked();
+
+    void markAsRead(String id);
+
+    void markAllAsRead();
 }

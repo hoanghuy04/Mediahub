@@ -3,6 +3,7 @@ package com.bondhub.notificationservices.service.delivery.handler;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.model.Notification;
+import com.bondhub.notificationservices.model.UserNotificationState;
 import com.bondhub.notificationservices.repository.NotificationRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,9 @@ public class InAppDeliveryHandler {
         Notification saved = notificationRepository.save(notification);
         log.info("IN_APP per-entity persisted: recipientId={}, type={}, referenceId={}",
                 event.getRecipientId(), event.getType(), event.getReferenceId());
+
+        incrementUnreadCount(event.getRecipientId());
+
         return saved;
     }
 
@@ -97,7 +101,18 @@ public class InAppDeliveryHandler {
         notificationRepository.save(persisted);
         log.info("IN_APP aggregate persisted: recipientId={}, type={}, totalActors={}",
                 event.getRecipientId(), event.getType(), actorCount);
+
+        incrementUnreadCount(event.getRecipientId());
+
         return persisted;
+    }
+
+    private void incrementUnreadCount(String userId) {
+        mongoTemplate.upsert(
+                new Query(Criteria.where("userId").is(userId)),
+                new Update().inc("unreadCount", 1L),
+                UserNotificationState.class
+        );
     }
 
     private Map<String, Object> buildData(String actorId, String actorName, String actorAvatar, int actorCount, int othersCount) {

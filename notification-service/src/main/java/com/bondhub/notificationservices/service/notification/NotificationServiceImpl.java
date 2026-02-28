@@ -6,14 +6,15 @@ import com.bondhub.notificationservices.dto.request.notification.CreateFriendReq
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationHistoryResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationResponse;
+import com.bondhub.notificationservices.dto.response.notification.UserNotificationStateResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.enums.NotificationType;
 import com.bondhub.notificationservices.event.RawNotificationEvent;
 import com.bondhub.notificationservices.mapper.NotificationMapper;
 import com.bondhub.notificationservices.model.Notification;
+import com.bondhub.notificationservices.model.UserNotificationState;
 import com.bondhub.notificationservices.publisher.RawNotificationPublisher;
-import com.bondhub.notificationservices.repository.NotificationRepository;
-import com.bondhub.notificationservices.service.delivery.handler.InAppDeliveryHandler;
+import com.bondhub.notificationservices.repository.UserNotificationStateRepository;
 import com.bondhub.notificationservices.service.notification.assembler.NotificationAssemblerResolver;
 import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
 import lombok.AccessLevel;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -38,17 +40,15 @@ import java.util.List;
 public class NotificationServiceImpl implements NotificationService {
 
     static final Duration FRESH_WINDOW = Duration.ofHours(2);
-    static final Duration GAP_THRESHOLD = Duration.ofHours(2);
 
     NotificationAssemblerResolver assemblerResolver;
     RawNotificationPublisher rawPublisher;
-    NotificationRepository notificationRepository;
     MongoTemplate mongoTemplate;
     NotificationMapper notificationMapper;
     SecurityUtil securityUtil;
     LocalizationUtil localizationUtil;
     NotificationTemplateService templateService;
-    InAppDeliveryHandler inAppDeliveryHandler;
+    UserNotificationStateRepository userStateRepository;
 
     @Override
     public NotificationAcceptedResponse createFriendRequestNotification(
@@ -63,11 +63,11 @@ public class NotificationServiceImpl implements NotificationService {
         String locale = localizationUtil.getCurrentLocale();
 
         Query query = new Query(Criteria.where("userId").is(userId));
-        
+
         if (cursor != null) {
             query.addCriteria(Criteria.where("lastModifiedAt").lt(cursor));
         }
-        
+
         query.with(Sort.by(Sort.Direction.DESC, "lastModifiedAt")).limit(limit);
 
         List<Notification> notifications = mongoTemplate.find(query, Notification.class);
@@ -104,13 +104,62 @@ public class NotificationServiceImpl implements NotificationService {
         return buildResponse(newest, today, previous, notifications);
     }
 
+    @Override
+    public UserNotificationStateResponse getNotificationState() {
+        String userId = securityUtil.getCurrentUserId();
+        UserNotificationState state = userStateRepository.findById(userId)
+                .orElse(UserNotificationState.builder()
+                        .userId(userId)
+                        .unreadCount(0)
+                        .build());
+
+        return notificationMapper.toStateResponse(state);
+    }
+
+    @Override
+    public void markHistoryAsChecked() {
+        String userId = securityUtil.getCurrentUserId();
+        mongoTemplate.upsert(
+                new Query(Criteria.where("userId").is(userId)),
+                new Update().set("lastCheckedAt", LocalDateTime.now()).set("unreadCount", 0L),
+                UserNotificationState.class
+        );
+    }
+
+    @Override
+    public void markAsRead(String id) {
+        String userId = securityUtil.getCurrentUserId();
+        Query query = new Query(Criteria.where("userId").is(userId)
+                .and("_id").is(id)
+                .and("isRead").is(false));
+
+        Update update = new Update()
+                .set("isRead", true)
+                .set("readAt", LocalDateTime.now());
+
+        mongoTemplate.findAndModify(query, update, Notification.class);
+    }
+
+    @Override
+    public void markAllAsRead() {
+        String userId = securityUtil.getCurrentUserId();
+        Query query = new Query((Criteria) Criteria.where("userId").is(userId)
+                .and("isRead").is(false));
+
+        Update update = new Update()
+                .set("isRead", true)
+                .set("readAt", LocalDateTime.now());
+
+        mongoTemplate.updateMulti(query, update, Notification.class);
+    }
+
     private NotificationHistoryResponse buildResponse(
             List<NotificationResponse> newest,
             List<NotificationResponse> today,
             List<NotificationResponse> previous,
             List<Notification> source
     ) {
-        LocalDateTime nextCursor = source.isEmpty() ? null : source.get(source.size() - 1).getLastModifiedAt();
+        LocalDateTime nextCursor = source.isEmpty() ? null : source.getLast().getLastModifiedAt();
         return new NotificationHistoryResponse(
                 newest != null ? newest : new ArrayList<>(),
                 today != null ? today : new ArrayList<>(),
