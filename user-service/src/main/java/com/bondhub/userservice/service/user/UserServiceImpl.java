@@ -300,7 +300,7 @@ public class UserServiceImpl implements UserService {
                     .fullName(user.getFullName())
                     .phoneNumber(phoneNumber)
                     .accountId(user.getAccountId())
-                    .role(role.name())
+                    .role(role != null ? role.name() : null)
                     .avatar(user.getAvatar())
                     .build();
             userSearchService.saveToToIndex(userIndex);

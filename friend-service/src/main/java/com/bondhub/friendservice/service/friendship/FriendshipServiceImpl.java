@@ -35,20 +35,19 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Override
     @Transactional
     public FriendRequestResponse sendFriendRequest(FriendRequestSendRequest request) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
+        String currentUserId = securityUtil.getCurrentUserId();
         String receiverId = request.receiverId();
         
-        log.info("User {} sending friend request to {}", currentAccountId, receiverId);
+        log.info("User {} sending friend request to {}", currentUserId, receiverId);
 
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
         validateUserExists(receiverId);
 
-        if (currentUser.id().equals(receiverId)) {
+        if (currentUserId.equals(receiverId)) {
             throw new AppException(ErrorCode.CANNOT_FRIEND_YOURSELF);
         }
 
         Optional<FriendShip> existingFriendship = friendShipRepository
-                .findFriendshipBetweenUsers(currentUser.id(), receiverId);
+                .findFriendshipBetweenUsers(currentUserId, receiverId);
         
         if (existingFriendship.isPresent()) {
             FriendShip friendship = existingFriendship.get();
@@ -60,7 +59,7 @@ public class FriendshipServiceImpl implements FriendshipService {
         }
 
         FriendShip friendShip = FriendShip.builder()
-                .requested(currentUser.id())
+                .requested(currentUserId)
                 .received(receiverId)
                 .content(request.message())
                 .friendStatus(FriendStatus.PENDING)
@@ -77,14 +76,13 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Override
     @Transactional
     public FriendRequestResponse acceptFriendRequest(String friendshipId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("User {} accepting friend request {}", currentUser.id(), friendshipId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("User {} accepting friend request {}", currentUserId, friendshipId);
 
         FriendShip friendShip = friendShipRepository.findById(friendshipId)
                 .orElseThrow(() -> new AppException(ErrorCode.FRIEND_REQUEST_NOT_FOUND));
 
-        if (!friendShip.getReceived().equals(currentUser.id())) {
+        if (!friendShip.getReceived().equals(currentUserId)) {
             throw new AppException(ErrorCode.NOT_AUTHORIZED_TO_ACCEPT);
         }
 
@@ -104,14 +102,13 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Override
     @Transactional
     public void declineFriendRequest(String friendshipId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("User {} declining friend request {}", currentUser.id(), friendshipId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("User {} declining friend request {}", currentUserId, friendshipId);
 
         FriendShip friendShip = friendShipRepository.findById(friendshipId)
                 .orElseThrow(() -> new AppException(ErrorCode.FRIEND_REQUEST_NOT_FOUND));
 
-        if (!friendShip.getReceived().equals(currentUser.id())) {
+        if (!friendShip.getReceived().equals(currentUserId)) {
             throw new AppException(ErrorCode.NOT_AUTHORIZED_TO_DECLINE);
         }
 
@@ -127,14 +124,13 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Override
     @Transactional
     public void cancelFriendRequest(String friendshipId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("User {} canceling friend request {}", currentUser.id(), friendshipId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("User {} canceling friend request {}", currentUserId, friendshipId);
 
         FriendShip friendShip = friendShipRepository.findById(friendshipId)
                 .orElseThrow(() -> new AppException(ErrorCode.FRIEND_REQUEST_NOT_FOUND));
 
-        if (!friendShip.getRequested().equals(currentUser.id())) {
+        if (!friendShip.getRequested().equals(currentUserId)) {
             throw new AppException(ErrorCode.NOT_AUTHORIZED_TO_CANCEL);
         }
 
@@ -150,26 +146,24 @@ public class FriendshipServiceImpl implements FriendshipService {
     @Override
     @Transactional
     public void unfriend(String friendId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("User {} unfriending user {}", currentUser.id(), friendId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("User {} unfriending user {}", currentUserId, friendId);
 
         FriendShip friendShip = friendShipRepository
-                .findAcceptedFriendship(currentUser.id(), friendId)
+                .findAcceptedFriendship(currentUserId, friendId)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FRIENDS));
 
         friendShipRepository.delete(friendShip);
-        log.info("Friendship between {} and {} removed", currentUser.id(), friendId);
+        log.info("Friendship between {} and {} removed", currentUserId, friendId);
     }
 
     @Override
     public List<FriendRequestResponse> getReceivedFriendRequests() {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Fetching received friend requests for user {}", currentUser.id());
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Fetching received friend requests for user {}", currentUserId);
 
         List<FriendShip> requests = friendShipRepository
-                .findByReceivedAndFriendStatusOrderByCreatedAtDesc(currentUser.id(), FriendStatus.PENDING);
+                .findByReceivedAndFriendStatusOrderByCreatedAtDesc(currentUserId, FriendStatus.PENDING);
 
         return requests.stream()
                 .map(friendShip -> {
@@ -182,12 +176,11 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     @Override
     public List<FriendRequestResponse> getSentFriendRequests() {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Fetching sent friend requests for user {}", currentUser.id());
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Fetching sent friend requests for user {}", currentUserId);
 
         List<FriendShip> requests = friendShipRepository
-                .findByRequestedAndFriendStatusOrderByCreatedAtDesc(currentUser.id(), FriendStatus.PENDING);
+                .findByRequestedAndFriendStatusOrderByCreatedAtDesc(currentUserId, FriendStatus.PENDING);
 
         return requests.stream()
                 .map(friendShip -> {
@@ -200,15 +193,14 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     @Override
     public List<FriendResponse> getMyFriends() {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Fetching friends list for user {}", currentUser.id());
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Fetching friends list for user {}", currentUserId);
 
-        List<FriendShip> friendships = friendShipRepository.findAllFriendsByUserId(currentUser.id());
+        List<FriendShip> friendships = friendShipRepository.findAllFriendsByUserId(currentUserId);
 
         return friendships.stream()
                 .map(friendship -> {
-                    String friendId = friendship.getRequested().equals(currentUser.id())
+                    String friendId = friendship.getRequested().equals(currentUserId)
                             ? friendship.getReceived()
                             : friendship.getRequested();
                     UserSummaryResponse friend = getUserSummary(friendId);
@@ -236,12 +228,11 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     @Override
     public FriendshipStatusResponse checkFriendshipStatus(String userId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Checking friendship status between {} and {}", currentUser.id(), userId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Checking friendship status between {} and {}", currentUserId, userId);
 
         Optional<FriendShip> friendship = friendShipRepository
-                .findFriendshipBetweenUsers(currentUser.id(), userId);
+                .findFriendshipBetweenUsers(currentUserId, userId);
 
         if (friendship.isEmpty()) {
             return FriendshipStatusResponse.builder()
@@ -263,12 +254,11 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     @Override
     public MutualFriendsResponse getMutualFriends(String userId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Fetching mutual friends between {} and {}", currentUser.id(), userId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Fetching mutual friends between {} and {}", currentUserId, userId);
 
-        List<FriendShip> currentUserFriends = friendShipRepository.findAllFriendsByUserId(currentUser.id());
-        Set<String> currentUserFriendIds = extractFriendIds(currentUserFriends, currentUser.id());
+        List<FriendShip> currentUserFriends = friendShipRepository.findAllFriendsByUserId(currentUserId);
+        Set<String> currentUserFriendIds = extractFriendIds(currentUserFriends, currentUserId);
 
         List<FriendShip> targetUserFriends = friendShipRepository.findAllFriendsByUserId(userId);
         Set<String> targetUserFriendIds = extractFriendIds(targetUserFriends, userId);
@@ -291,12 +281,11 @@ public class FriendshipServiceImpl implements FriendshipService {
 
     @Override
     public Integer getMutualFriendsCount(String userId) {
-        String currentAccountId = securityUtil.getCurrentAccountId();
-        UserSummaryResponse currentUser = validateUserByAccountId(currentAccountId);
-        log.info("Counting mutual friends between {} and {}", currentUser.id(), userId);
+        String currentUserId = securityUtil.getCurrentUserId();
+        log.info("Counting mutual friends between {} and {}", currentUserId, userId);
 
-        List<FriendShip> currentUserFriends = friendShipRepository.findAllFriendsByUserId(currentUser.id());
-        Set<String> currentUserFriendIds = extractFriendIds(currentUserFriends, currentUser.id());
+        List<FriendShip> currentUserFriends = friendShipRepository.findAllFriendsByUserId(currentUserId);
+        Set<String> currentUserFriendIds = extractFriendIds(currentUserFriends, currentUserId);
 
         List<FriendShip> targetUserFriends = friendShipRepository.findAllFriendsByUserId(userId);
         Set<String> targetUserFriendIds = extractFriendIds(targetUserFriends, userId);
@@ -331,19 +320,6 @@ public class FriendshipServiceImpl implements FriendshipService {
                 .fullName("Unknown User")
                 .avatar(null)
                 .build();
-    }
-
-    private UserSummaryResponse validateUserByAccountId(String accountId) {
-        try {
-            ApiResponse<UserSummaryResponse> response = userServiceClient.getUserByAccountId(accountId);
-            if (response == null || response.data() == null) {
-                throw new AppException(ErrorCode.USER_NOT_FOUND);
-            }
-            return response.data();
-        } catch (Exception e) {
-            log.error("Failed to validate user by accountId: {}", accountId, e);
-            throw new AppException(ErrorCode.USER_NOT_FOUND);
-        }
     }
 
     private void validateUserExists(String userId) {
