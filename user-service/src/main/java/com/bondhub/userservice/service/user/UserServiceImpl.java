@@ -240,9 +240,9 @@ public class UserServiceImpl implements UserService {
             }
 
             log.info("Background updated successfully for user: {}", accountId);
-            
+
             publishUserIndexEvent(user, null);
-            
+
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return userMapper.toBackgroundResponse(user, baseUrl);
         }
@@ -279,6 +279,7 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
         log.info("User deleted successfully with id: {}", id);
 
+        // Delete from Elasticsearch
         try {
             userIndexEventPublisher.publishDeleteRequest(id);
         } catch (Exception e) {
@@ -296,5 +297,4 @@ public class UserServiceImpl implements UserService {
                 .role(accountResponse != null ? Role.valueOf(accountResponse.role()) : null)
                 .build());
     }
-
 }

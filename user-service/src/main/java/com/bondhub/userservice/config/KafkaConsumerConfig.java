@@ -38,7 +38,7 @@ public class KafkaConsumerConfig {
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
-        props.put(JsonDeserializer.TYPE_MAPPINGS, 
+        props.put(JsonDeserializer.TYPE_MAPPINGS,
             "accountRegistered:com.bondhub.common.event.account.AccountRegisteredEvent," +
             "userIndexRequested:com.bondhub.common.event.user.UserIndexRequestedEvent," +
             "userIndexDeleted:com.bondhub.common.event.user.UserIndexDeletedEvent");
