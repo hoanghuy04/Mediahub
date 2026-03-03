@@ -313,7 +313,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 outboxEventPublisher.saveAndPublish(
                         userId,
                         "User",
-                        EventType.USER_INDEX,
+                        EventType.USER_INDEX_REQUESTED,
                         indexEvent
                 );
                 log.info("📤 Published USER_INDEX event for userId: {}", userId);
