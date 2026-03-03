@@ -55,6 +55,18 @@ public enum ErrorCode {
         QR_SESSION_INVALID_STATE(HttpStatus.CONFLICT, 1011, "error.qr.session.invalid.state"),
         QR_SESSION_UNAUTHORIZED(HttpStatus.FORBIDDEN, 1012, "error.qr.session.unauthorized"),
 
+
+        // Friendship errors (3xxx)
+        FRIEND_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, 3001, "error.friend.request.not.found"),
+        ALREADY_FRIENDS(HttpStatus.CONFLICT, 3002, "error.friend.already.friends"),
+        FRIEND_REQUEST_ALREADY_SENT(HttpStatus.CONFLICT, 3003, "error.friend.request.already.sent"),
+        CANNOT_FRIEND_YOURSELF(HttpStatus.BAD_REQUEST, 3004, "error.friend.cannot.friend.yourself"),
+        NOT_FRIENDS(HttpStatus.BAD_REQUEST, 3005, "error.friend.not.friends"),
+        NOT_AUTHORIZED_TO_ACCEPT(HttpStatus.FORBIDDEN, 3006, "error.friend.not.authorized.to.accept"),
+        NOT_AUTHORIZED_TO_DECLINE(HttpStatus.FORBIDDEN, 3007, "error.friend.not.authorized.to.decline"),
+        NOT_AUTHORIZED_TO_CANCEL(HttpStatus.FORBIDDEN, 3008, "error.friend.not.authorized.to.cancel"),
+        FRIEND_REQUEST_NOT_PENDING(HttpStatus.BAD_REQUEST, 3009, "error.friend.request.not.pending"),
+
         // Block List errors (23xx)
         CANNOT_BLOCK_YOURSELF(HttpStatus.BAD_REQUEST, 2301, "error.block.cannot.block.yourself"),
         USER_ALREADY_BLOCKED(HttpStatus.CONFLICT, 2302, "error.block.user.already.blocked"),
@@ -64,7 +76,7 @@ public enum ErrorCode {
         STORY_BLOCKED(HttpStatus.FORBIDDEN, 2306, "error.block.story.blocked"),
         COMMUNICATION_BLOCKED(HttpStatus.FORBIDDEN, 2307, "error.block.communication.blocked")
 
-        ;
+            ;
 
         private final HttpStatus httpStatus;
         private final int code;
