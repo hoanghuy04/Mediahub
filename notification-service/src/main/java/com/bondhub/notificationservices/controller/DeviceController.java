@@ -25,8 +25,8 @@ public class DeviceController {
     }
 
     @DeleteMapping
-    public ResponseEntity<ApiResponse<String>> unregisterDevice(@RequestParam String userId, @RequestParam String token) {
-        deviceService.unregisterDevice(userId, token);
+    public ResponseEntity<ApiResponse<String>> unregisterDevice(@RequestParam String token) {
+        deviceService.unregisterDevice(token);
         return ResponseEntity.ok(ApiResponse.success("Device unregistered successfully"));
     }
 }

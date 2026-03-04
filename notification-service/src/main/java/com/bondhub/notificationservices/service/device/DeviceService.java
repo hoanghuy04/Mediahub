@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface DeviceService {
     void registerDevice(DeviceTokenRequest request);
-    void unregisterDevice(String userId, String token);
+    void unregisterDevice(String token);
     List<UserDevice> getDevicesForUser(String userId);
 }

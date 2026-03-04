@@ -95,6 +95,7 @@ public class FcmDeliveryHandler {
                 .setToken(device.getFcmToken())
                 .setNotification(fcmNotification)
                 .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
                         .setCollapseKey(collapseKey)
                         .setNotification(AndroidNotification.builder()
                                 .setTag(collapseKey)
