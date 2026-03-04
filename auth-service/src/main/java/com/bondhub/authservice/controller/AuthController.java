@@ -1,14 +1,6 @@
 package com.bondhub.authservice.controller;
 
-import com.bondhub.authservice.dto.auth.request.ChangePasswordRequest;
-import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
-import com.bondhub.authservice.dto.auth.request.LoginRequest;
-import com.bondhub.authservice.dto.auth.request.LogoutRequest;
-import com.bondhub.authservice.dto.auth.request.RefreshRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterInitRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterVerifyRequest;
-import com.bondhub.authservice.dto.auth.request.ResetPasswordRequest;
+import com.bondhub.authservice.dto.auth.request.*;
 import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
 import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
@@ -250,7 +242,7 @@ public class AuthController {
 
     @PostMapping("/logout-device")
     public ResponseEntity<ApiResponse<Void>> logoutDevice(
-            @Valid @RequestBody com.bondhub.authservice.dto.auth.request.LogoutDeviceRequest request,
+            @Valid @RequestBody LogoutDeviceRequest request,
             @CookieValue(value = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String cookieRefreshToken) {
 
         log.info("POST /auth/logout-device - Logout specific device request");

@@ -18,4 +18,5 @@ public interface RefreshTokenSessionRepository extends CrudRepository<RefreshTok
     Optional<RefreshTokenSession> findByAccountIdAndDeviceId(String accountId, String deviceId);
 
     void deleteByAccountId(String accountId);
+
 }

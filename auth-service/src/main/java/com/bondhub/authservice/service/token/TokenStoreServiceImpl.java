@@ -27,7 +27,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
     private final JwtUtil jwtUtil;
 
     @Override
-    public void blacklistAccessToken(String jti, String userId, String phoneNumber, long ttlSeconds, String reason) {
+    public void blacklistAccessToken(String jti, String accountId, String phoneNumber, long ttlSeconds, String reason) {
         if (ttlSeconds <= 0) {
             log.debug("Skipping blacklist for expired token jti={}", jti);
             return;
@@ -35,7 +35,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
 
         BlacklistedAccessToken blacklisted = BlacklistedAccessToken.builder()
                 .jti(jti)
-                .userId(userId)
+                .accountId(accountId)
                 .phoneNumber(phoneNumber)
                 .reason(reason)
                 .blacklistedAt(System.currentTimeMillis())
@@ -43,7 +43,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
                 .build();
 
         blacklistRepository.save(blacklisted);
-        log.info("Access token blacklisted: jti={}, userId={}, reason={}", jti, userId, reason);
+        log.info("Access token blacklisted: jti={}, accountId={}, reason={}", jti, accountId, reason);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
     @Override
     public void createRefreshSession(
             String sessionId,
-            String userId,
+            String accountId,
             String phoneNumber,
             String deviceId,
             DeviceType deviceType,
@@ -63,7 +63,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
             String ipAddress,
             long ttlSeconds) {
         List<RefreshTokenSession> oldSessions = refreshSessionRepository
-                .findByUserIdAndDeviceType(userId, deviceType);
+                .findByAccountIdAndDeviceType(accountId, deviceType);
 
         for (RefreshTokenSession oldSession : oldSessions) {
             if (!deviceId.equals(oldSession.getDeviceId())) {
@@ -82,8 +82,7 @@ public class TokenStoreServiceImpl implements TokenStoreService {
 
         RefreshTokenSession session = RefreshTokenSession.builder()
                 .sessionId(sessionId)
-                .userId(userId)
-                .phoneNumber(phoneNumber)
+                .accountId(accountId)
                 .deviceId(deviceId)
                 .deviceType(deviceType)
                 .refreshTokenHash(hashSha256(refreshToken))
@@ -96,8 +95,8 @@ public class TokenStoreServiceImpl implements TokenStoreService {
                 .build();
 
         refreshSessionRepository.save(session);
-        log.info("Refresh session created: sessionId={}, userId={}, deviceType={}, deviceId={}",
-                sessionId, userId, deviceType, deviceId);
+        log.info("Refresh session created: sessionId={}, accountId={}, deviceType={}, deviceId={}",
+                sessionId, accountId, deviceType, deviceId);
     }
 
     @Override
@@ -192,22 +191,45 @@ public class TokenStoreServiceImpl implements TokenStoreService {
         refreshSessionRepository.findById(sessionId).ifPresent(session -> {
             session.setRevoked(true);
             refreshSessionRepository.save(session);
-            log.info("Refresh session revoked: sessionId={}, userId={}", sessionId, session.getUserId());
+            log.info("Refresh session revoked: sessionId={}, accountId={}", sessionId, session.getAccountId());
         });
     }
 
     @Override
-    public int revokeAllUserRefreshSessions(String userId) {
-        List<RefreshTokenSession> sessions = refreshSessionRepository.findByUserId(userId);
+    public int revokeAllUserRefreshSessions(String accountId) {
+        List<RefreshTokenSession> sessions = refreshSessionRepository.findByAccountId(accountId);
         int count = sessions.size();
 
         if (count > 0) {
             sessions.forEach(session -> session.setRevoked(true));
             refreshSessionRepository.saveAll(sessions);
-            log.info("Revoked {} refresh sessions for userId={}", count, userId);
+            log.info("Revoked {} refresh sessions for accountId={}", count, accountId);
         }
 
         return count;
+    }
+
+    @Override
+    public List<String> revokeAllUserRefreshSessionsExcept(String accountId, String excludedSessionId) {
+        List<RefreshTokenSession> sessions = refreshSessionRepository.findByAccountId(accountId);
+
+        List<RefreshTokenSession> sessionsToRevoke = sessions.stream()
+                .filter(session -> !session.getSessionId().equals(excludedSessionId))
+                .filter(session -> !Boolean.TRUE.equals(session.getRevoked()))
+                .toList();
+
+        List<String> revokedSessionIds = new java.util.ArrayList<>();
+        if (!sessionsToRevoke.isEmpty()) {
+            sessionsToRevoke.forEach(session -> {
+                session.setRevoked(true);
+                revokedSessionIds.add(session.getSessionId());
+            });
+            refreshSessionRepository.saveAll(sessionsToRevoke);
+            log.info("Revoked {} other refresh sessions for accountId={}, keeping sessionId={}",
+                    revokedSessionIds.size(), accountId, excludedSessionId);
+        }
+
+        return revokedSessionIds;
     }
 
     @Override

@@ -10,15 +10,16 @@ import com.bondhub.common.utils.S3Util;
 import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.client.FileServiceClient;
-import com.bondhub.userservice.dto.request.UserCreateRequest;
-import com.bondhub.userservice.dto.request.UserUpdateRequest;
+
 import com.bondhub.userservice.dto.request.UserIndexRequest;
-import com.bondhub.userservice.dto.request.AvatarUpdateRequest;
-import com.bondhub.userservice.dto.request.BackgroundUpdateRequest;
-import com.bondhub.userservice.dto.response.AccountResponse;
-import com.bondhub.userservice.dto.response.UserResponse;
-import com.bondhub.userservice.dto.response.UserProfileResponse;
-import com.bondhub.userservice.dto.response.UserImageResponse;
+import com.bondhub.userservice.dto.request.user.AvatarUpdateRequest;
+import com.bondhub.userservice.dto.request.user.BackgroundUpdateRequest;
+import com.bondhub.userservice.dto.request.user.UserCreateRequest;
+import com.bondhub.userservice.dto.request.user.UserUpdateRequest;
+import com.bondhub.userservice.dto.response.user.AccountResponse;
+import com.bondhub.userservice.dto.response.user.UserImageResponse;
+import com.bondhub.userservice.dto.response.user.UserProfileResponse;
+import com.bondhub.userservice.dto.response.user.UserResponse;
 import com.bondhub.userservice.mapper.UserMapper;
 import com.bondhub.userservice.mapper.UserProfileMapper;
 import com.bondhub.userservice.model.User;
@@ -160,7 +161,7 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse getUserProfileResponseWithUrl(User user, AccountResponse accountResponse) {
         UserProfileResponse response = userProfileMapper.toUserProfileResponse(user, accountResponse);
         String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
-        
+
         return UserProfileResponse.builder()
                 .id(response.id())
                 .phoneNumber(response.phoneNumber())
@@ -286,7 +287,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void indexUserToElasticsearch(UserIndexRequest request) {
-        log.info("Indexing user to Elasticsearch: userId={}, phoneNumber={}, role={}", 
+        log.info("Indexing user to Elasticsearch: userId={}, phoneNumber={}, role={}",
                 request.userId(), request.phoneNumber(), request.role());
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
