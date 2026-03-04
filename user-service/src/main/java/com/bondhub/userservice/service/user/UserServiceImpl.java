@@ -71,7 +71,19 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with id: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(user.getAccountId());
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+                log.info("Account info fetched successfully for user: {}", id);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for user: {}. Account info will be null.", id, e);
+        }
+        
+        return getUserResponseWithUrl(user, accountResponse);
     }
 
     @Override
@@ -79,7 +91,19 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with accountId: {}", accountId);
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(accountId);
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+                log.info("Account info fetched successfully for accountId: {}", accountId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for accountId: {}. Account info will be null.", accountId, e);
+        }
+        
+        return getUserResponseWithUrl(user, accountResponse);
     }
 
     @Override
@@ -173,6 +197,22 @@ public class UserServiceImpl implements UserService {
                 .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
                 .background(response.background() != null ? baseUrl + response.background() : null)
                 .backgroundY(response.backgroundY())
+                .build();
+    }
+
+    private UserResponse getUserResponseWithUrl(User user, AccountResponse accountResponse) {
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .dob(user.getDob())
+                .bio(user.getBio())
+                .gender(user.getGender())
+                .accountInfo(accountResponse)
+                .avatar(user.getAvatar() != null ? baseUrl + user.getAvatar() : null)
+                .background(user.getBackground() != null ? baseUrl + user.getBackground() : null)
+                .backgroundY(user.getBackgroundY())
                 .build();
     }
 
