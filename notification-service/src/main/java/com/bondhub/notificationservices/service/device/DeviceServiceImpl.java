@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.bondhub.notificationservices.enums.Platform;
+
 import java.util.List;
 
 @Service
@@ -26,25 +28,23 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void registerDevice(DeviceTokenRequest request) {
         String userId = securityUtil.getCurrentUserId();
-        log.info("Registering device for user: {}, type: {}", userId, request.platform());
+        log.info("Registering device for user: {}, platform: {}", userId, request.platform());
 
         userDeviceRepository.deleteByFcmTokenAndUserIdNot(request.token(), userId);
 
-        userDeviceRepository.findByUserIdAndFcmToken(userId, request.token())
-                .ifPresentOrElse(
-                        existingDevice -> {
-                            log.info("Device already exists for user: {}", userId);
-                        },
-                        () -> {
-                            UserDevice specificDevice = UserDevice.builder()
-                                    .userId(userId)
-                                    .fcmToken(request.token())
-                                    .platform(request.platform())
-                                    .build();
-                            userDeviceRepository.save(specificDevice);
-                            log.info("New device registered for user: {}", userId);
-                        }
-                );
+        if (request.platform() == Platform.WEB) {
+            userDeviceRepository.deleteByUserIdAndPlatformIn(userId, List.of(Platform.WEB));
+        } else {
+            userDeviceRepository.deleteByUserIdAndPlatformIn(userId, List.of(Platform.ANDROID, Platform.IOS));
+        }
+
+        UserDevice specificDevice = UserDevice.builder()
+                .userId(userId)
+                .fcmToken(request.token())
+                .platform(request.platform())
+                .build();
+        userDeviceRepository.save(specificDevice);
+        log.info("Device registered successfully for user: {} on platform: {}", userId, request.platform());
     }
 
     @Override

@@ -85,21 +85,21 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
 
     @Override
     public String renderTitle(NotificationType type, NotificationChannel channel,
-                              String locale, Map<String, Object> data) {
+                              String locale, Map<String, Object> payload) {
         NotificationTemplate template = notificationTemplateRepository
                 .findByTypeAndChannelAndLocaleAndActiveTrue(type, channel, locale)
                 .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND));
 
-        return templateEngine.render(template.getTitleTemplate(), data);
+        return templateEngine.render(template.getTitleTemplate(), payload);
     }
 
     @Override
     public String renderBody(NotificationType type, NotificationChannel channel,
-                             String locale, Map<String, Object> data) {
+                             String locale, Map<String, Object> payload) {
         NotificationTemplate template = notificationTemplateRepository
                 .findByTypeAndChannelAndLocaleAndActiveTrue(type, channel, locale)
                 .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND));
 
-        return templateEngine.render(template.getBodyTemplate(), data);
+        return templateEngine.render(template.getBodyTemplate(), payload);
     }
 }

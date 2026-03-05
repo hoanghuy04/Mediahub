@@ -45,7 +45,7 @@ public class Notification extends BaseModel {
     @Field(targetType = FieldType.OBJECT_ID)
     List<String> actorIds;
 
-    Map<String, Object> data;
+    Map<String, Object> payload;
 
     boolean isRead;
 

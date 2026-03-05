@@ -199,14 +199,14 @@ public class NotificationServiceImpl implements NotificationService {
                 n.getType(),
                 NotificationChannel.IN_APP,
                 locale,
-                n.getData()
+                n.getPayload()
         );
 
         String body = templateService.renderBody(
                 n.getType(),
                 NotificationChannel.IN_APP,
                 locale,
-                n.getData()
+                n.getPayload()
         );
 
         return notificationMapper.toResponse(n, title, body);

@@ -39,7 +39,7 @@ public class BatcherServiceImpl implements BatcherService {
         if (!cfg.isBatchable()) return false;
 
         try {
-            String batchKey = buildBatchKey(event);
+            String batchKey = buildBatchKey(event, cfg);
             String lockKey  = LOCK_PREFIX + batchKey;
             String listKey  = LIST_PREFIX + batchKey;
 
@@ -68,9 +68,9 @@ public class BatcherServiceImpl implements BatcherService {
         return BatchWindowConfig.of(type).isBatchable();
     }
 
-    public static String buildBatchKey(RawNotificationEvent event) {
+    private String buildBatchKey(RawNotificationEvent event, BatchWindowConfig cfg) {
         String key = event.getType().name() + ":" + event.getRecipientId();
-        if (event.getReferenceId() != null) {
+        if (cfg.isIncludeReferenceInKey() && event.getReferenceId() != null) {
             key += ":" + event.getReferenceId();
         }
         return key;

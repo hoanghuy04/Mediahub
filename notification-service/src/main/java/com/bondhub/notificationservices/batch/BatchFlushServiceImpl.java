@@ -72,6 +72,8 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                             e.getPayload() != null ? e.getPayload() : Collections.emptyMap()
                     );
                     p.put("actorId",     e.getActorId());
+                    p.put("actorName",   e.getActorName());
+                    p.put("actorAvatar", e.getActorAvatar());
                     p.put("referenceId", e.getReferenceId());
                     p.put("occurredAt",  e.getOccurredAt() != null ? e.getOccurredAt().toString() : null);
                     return p;

@@ -5,6 +5,7 @@ import lombok.Builder;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Builder
 public record NotificationResponse(
@@ -16,5 +17,6 @@ public record NotificationResponse(
         List<String> actorIds,
         int actorCount,
         boolean read,
-        LocalDateTime lastModifiedAt
+        LocalDateTime lastModifiedAt,
+        Map<String, Object> payload
 ) {}

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,48 +46,44 @@ public class DataInitializer {
     }
 
     public void seedTemplates() {
+        // --- IN_APP TEMPLATES (HTML formatted for App list) ---
         seedIfAbsent(NotificationType.FRIEND_REQUEST, NotificationChannel.IN_APP, "vi",
                 "Lời mời kết bạn",
-                "{{firstName}}{{#othersCount}} và {{othersCount}} người khác{{/othersCount}} đã gửi lời mời kết bạn cho bạn");
+                "<b>{{actorName}}</b>{{#showSecondActor}} và <b>{{secondActorName}}</b>{{/showSecondActor}}{{#othersCount}} và <b>{{othersCount}} người khác</b>{{/othersCount}} đã gửi lời mời kết bạn cho bạn");
         seedIfAbsent(NotificationType.FRIEND_REQUEST, NotificationChannel.IN_APP, "en",
                 "Friend request",
-                "{{firstName}}{{#othersCount}} and {{othersCount}} others{{/othersCount}} sent you a friend request");
+                "<b>{{actorName}}</b>{{#showSecondActor}} and <b>{{secondActorName}}</b>{{/showSecondActor}}{{#othersCount}} and <b>{{othersCount}} others</b>{{/othersCount}} sent you a friend request");
 
         seedIfAbsent(NotificationType.MESSAGE_DIRECT, NotificationChannel.IN_APP, "vi",
                 "Tin nhắn mới",
-                "{{firstName}} đã gửi cho bạn một tin nhắn");
+                "<b>{{actorName}}</b> đã gửi cho bạn một tin nhắn");
         seedIfAbsent(NotificationType.MESSAGE_DIRECT, NotificationChannel.IN_APP, "en",
                 "New message",
-                "{{firstName}} sent you a message");
+                "<b>{{actorName}}</b> sent you a message");
 
         seedIfAbsent(NotificationType.POST_LIKE, NotificationChannel.IN_APP, "vi",
                 "Lượt thích bài viết",
-                "{{firstName}} đã thích bài viết của bạn");
+                "<b>{{actorName}}</b>{{#showSecondActor}} và <b>{{secondActorName}}</b>{{/showSecondActor}}{{#othersCount}} và <b>{{othersCount}} người khác</b>{{/othersCount}} đã thích bài viết của bạn");
         seedIfAbsent(NotificationType.POST_LIKE, NotificationChannel.IN_APP, "en",
                 "Post liked",
-                "{{firstName}} liked your post");
+                "<b>{{actorName}}</b>{{#showSecondActor}} and <b>{{secondActorName}}</b>{{/showSecondActor}}{{#othersCount}} and <b>{{othersCount}} others</b>{{/othersCount}} liked your post");
 
-        seedIfAbsent(NotificationType.POST_COMMENT, NotificationChannel.IN_APP, "vi",
-                "Bình luận mới",
-                "{{firstName}} đã bình luận về bài viết của bạn");
-        seedIfAbsent(NotificationType.POST_COMMENT, NotificationChannel.IN_APP, "en",
-                "New comment",
-                "{{firstName}} commented on your post");
+        // --- FCM TEMPLATES (Standard Push Notifications) ---
+        seedIfAbsent(NotificationType.FRIEND_REQUEST, NotificationChannel.FCM, "vi",
+                "Lời mời kết bạn",
+                "{{actorName}}{{#othersCount}} và {{othersCount}} người khác{{/othersCount}} đã gửi cho bạn lời mời kết bạn.");
+        seedIfAbsent(NotificationType.FRIEND_REQUEST, NotificationChannel.FCM, "en",
+                "New friend request",
+                "{{actorName}}{{#othersCount}} and {{othersCount}} others{{/othersCount}} sent you a friend request.");
 
-        seedIfAbsent(NotificationType.POST_TAG, NotificationChannel.IN_APP, "vi",
-                "Gắn thẻ",
-                "{{firstName}} đã gắn thẻ bạn trong một bài viết");
-        seedIfAbsent(NotificationType.POST_TAG, NotificationChannel.IN_APP, "en",
-                "Tagged in post",
-                "{{firstName}} tagged you in a post");
+        seedIfAbsent(NotificationType.MESSAGE_DIRECT, NotificationChannel.FCM, "vi",
+                "Tin nhắn mới",
+                "{{actorName}} đã gửi cho bạn một tin nhắn.");
+        seedIfAbsent(NotificationType.MESSAGE_DIRECT, NotificationChannel.FCM, "en",
+                "New message",
+                "{{actorName}} sent you a message.");
 
-        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.IN_APP, "vi",
-                "Chấp nhận kết bạn",
-                "{{firstName}} đã chấp nhận lời mời kết bạn");
-        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.IN_APP, "en",
-                "Friend request accepted",
-                "{{firstName}} accepted your friend request");
-
+        // --- SHARED SYSTEM TEMPLATES ---
         seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.IN_APP, "vi",
                 "Hệ thống",
                 "Tài khoản của bạn đã được bảo mật thành công");
@@ -158,7 +155,21 @@ public class DataInitializer {
         doc.append("referenceId", new ObjectId()); // Add unique referenceId to avoid duplicate key error
         doc.append("actorIds", actors.stream().map(ObjectId::new).collect(Collectors.toList()));
         doc.append("isRead", isRead);
-        doc.append("data", new Document(Map.of("firstName", type == NotificationType.SYSTEM ? "Hệ thống" : name)));
+        
+        // Prepare payload map for template rendering
+        Map<String, Object> payloadMap = new HashMap<>();
+        payloadMap.put("actorCount", actors.size());
+        payloadMap.put("othersCount", Math.max(0, actors.size() - 1));
+        payloadMap.put("showSecondActor", actors.size() == 2);
+        payloadMap.put("actorName", type == NotificationType.SYSTEM ? "Hệ thống" : name);
+        payloadMap.put("actorAvatar", "https://i.pravatar.cc/150?u=" + name);
+        
+        if (actors.size() == 2) {
+            String secondActorName = NAMES.get((NAMES.indexOf(name) + 1) % NAMES.size());
+            payloadMap.put("secondActorName", secondActorName);
+        }
+
+        doc.append("payload", new Document(payloadMap));
         doc.append("createdAt", date);
         doc.append("lastModifiedAt", date);
         doc.append("_class", Notification.class.getName());

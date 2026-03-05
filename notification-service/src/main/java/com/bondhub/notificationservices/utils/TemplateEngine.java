@@ -2,14 +2,16 @@ package com.bondhub.notificationservices.utils;
 
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
 public class TemplateEngine {
-    public String render(String template, Map<String, Object> data) {
+    public String render(String template, Map<String, Object> payload) {
         if (template == null) return "";
+        if (payload == null) payload = Collections.emptyMap();
         String result = template;
 
         Pattern pattern = Pattern.compile("\\{\\{#(.+?)}}(.*?)\\{\\{/\\1}}", Pattern.DOTALL);
@@ -18,7 +20,7 @@ public class TemplateEngine {
         while (matcher.find()) {
             String key = matcher.group(1).trim();
             String content = matcher.group(2);
-            Object value = data.get(key);
+            Object value = payload.get(key);
 
             boolean shouldShow = false;
             if (value instanceof Number) {
@@ -34,7 +36,7 @@ public class TemplateEngine {
         matcher.appendTail(sb);
         result = sb.toString();
 
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
+        for (Map.Entry<String, Object> entry : payload.entrySet()) {
             result = result.replace(
                     "{{" + entry.getKey() + "}}",
                     entry.getValue() != null ? entry.getValue().toString() : ""

@@ -16,7 +16,7 @@ public interface NotificationTemplateService {
 
     NotificationTemplateResponse getTemplate(NotificationType type, NotificationChannel channel, String locale);
 
-    String renderTitle(NotificationType type, NotificationChannel channel, String locale, Map<String, Object> data);
+    String renderTitle(NotificationType type, NotificationChannel channel, String locale, Map<String, Object> payload);
 
-    String renderBody(NotificationType type, NotificationChannel channel, String locale, Map<String, Object> data);
+    String renderBody(NotificationType type, NotificationChannel channel, String locale, Map<String, Object> payload);
 }

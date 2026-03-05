@@ -7,6 +7,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 @Document("user_devices")
@@ -21,9 +23,10 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserDevice extends BaseModel {
 
-    @MongoId
+    @MongoId(FieldType.OBJECT_ID)
     String id;
 
+    @Field(targetType = FieldType.OBJECT_ID)
     String userId;
 
     String fcmToken;

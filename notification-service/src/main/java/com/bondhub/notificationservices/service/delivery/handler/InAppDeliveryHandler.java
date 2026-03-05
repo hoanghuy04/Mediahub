@@ -1,5 +1,6 @@
 package com.bondhub.notificationservices.service.delivery.handler;
 
+import com.bondhub.notificationservices.enums.BatchWindowConfig;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.model.Notification;
@@ -29,33 +30,90 @@ public class InAppDeliveryHandler {
     MongoTemplate mongoTemplate;
 
     public Notification persistAndReturn(BatchedNotificationEvent event) {
+        BatchWindowConfig cfg =
+            BatchWindowConfig.of(event.getType());
+
+        if (!cfg.isIncludeReferenceInKey()) {
+            return persistAggregate(event);
+        }
+
         return event.getReferenceId() != null
                 ? persistPerEntity(event)
                 : persistAggregate(event);
     }
 
     private Notification persistPerEntity(BatchedNotificationEvent event) {
-        int actorCount = 1;
-        int othersCount = 0;
+        List<String> rawActorIds = event.getActorIds() != null ? event.getActorIds() : List.of();
+        List<ObjectId> actorObjectIds = rawActorIds.stream()
+                .filter(ObjectId::isValid)
+                .map(ObjectId::new)
+                .toList();
 
-        Notification notification = Notification.builder()
-                .userId(event.getRecipientId())
-                .type(event.getType())
-                .referenceId(event.getReferenceId())
-                .actorIds(new ArrayList<>(List.of(event.getLastActorId())))
-                .data(buildData(event.getLastActorId(), event.getLastActorName(), event.getLastActorAvatar(), actorCount, othersCount))
-                .isRead(false)
-                .build();
+        Query query = new Query(Criteria.where("userId").is(event.getRecipientId())
+                .and("type").is(event.getType())
+                .and("referenceId").is(event.getReferenceId()));
 
-        notification.setLastModifiedAt(event.getLastOccurredAt());
-        notification.setCreatedAt(event.getLastOccurredAt());
+        Update update = new Update()
+                .push("actorIds").atPosition(Update.Position.LAST).each(actorObjectIds.toArray())
+                .set("isRead", false)
+                .set("lastModifiedAt", event.getLastOccurredAt());
 
-        Notification saved = notificationRepository.save(notification);
-        log.info("IN_APP per-entity persisted: recipientId={}, type={}, referenceId={}",
-                event.getRecipientId(), event.getType(), event.getReferenceId());
+        Notification persisted = mongoTemplate.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(true).upsert(true),
+                Notification.class
+        );
+
+        if (persisted == null) return null;
+
+        return finalizeAndSave(persisted, event);
+    }
+
+    private Notification finalizeAndSave(Notification persisted, BatchedNotificationEvent event) {
+        Set<String> unique = new LinkedHashSet<>(persisted.getActorIds());
+        List<String> finalActors = new ArrayList<>(unique);
+        persisted.setActorIds(finalActors);
+
+        int actorCount = finalActors.size();
+        int othersCount = Math.max(0, actorCount - 1);
+
+        List<Map<String, Object>> payloads = event.getRawPayloads() != null ? event.getRawPayloads() : List.of();
+        Map<String, Object> basePayload = !payloads.isEmpty() ? payloads.get(payloads.size() - 1) : Map.of();
+        Map<String, Object> payloadMap = new HashMap<>(basePayload);
+
+        payloadMap.remove("firstName");
+        payloadMap.remove("lastName");
+        payloadMap.remove("count");
+        payloadMap.remove("actorId");
+
+        payloadMap.put("actorName", event.getLastActorName());
+        payloadMap.put("actorAvatar", event.getLastActorAvatar());
+        payloadMap.put("actorCount", actorCount);
+        payloadMap.put("othersCount", othersCount);
+        payloadMap.put("showSecondActor", actorCount == 2);
+
+        if (actorCount == 2) {
+            try {
+                String secondToLastId = finalActors.get(finalActors.size() - 2);
+                String secondName = payloads.stream()
+                        .filter(p -> secondToLastId.equals(p.get("actorId")))
+                        .map(p -> (String) p.get("actorName"))
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse("một người khác");
+                payloadMap.put("secondActorName", secondName);
+            } catch (Exception e) {
+                payloadMap.put("secondActorName", "một người khác");
+            }
+        } else {
+            payloadMap.remove("secondActorName");
+        }
+
+        persisted.setPayload(payloadMap);
+        Notification saved = notificationRepository.save(persisted);
 
         incrementUnreadCount(event.getRecipientId());
-
         return saved;
     }
 
@@ -88,23 +146,7 @@ public class InAppDeliveryHandler {
             return null;
         }
 
-        Set<String> unique = new LinkedHashSet<>(persisted.getActorIds());
-        List<String> finalActors = new ArrayList<>(unique);
-        persisted.setActorIds(finalActors);
-
-        int actorCount = finalActors.size();
-        int othersCount = actorCount - 1;
-        String lastActorId = finalActors.getLast();
-
-        persisted.setData(buildData(lastActorId, event.getLastActorName(), event.getLastActorAvatar(), actorCount, othersCount));
-
-        notificationRepository.save(persisted);
-        log.info("IN_APP aggregate persisted: recipientId={}, type={}, totalActors={}",
-                event.getRecipientId(), event.getType(), actorCount);
-
-        incrementUnreadCount(event.getRecipientId());
-
-        return persisted;
+        return finalizeAndSave(persisted, event);
     }
 
     private void incrementUnreadCount(String userId) {
@@ -113,17 +155,5 @@ public class InAppDeliveryHandler {
                 new Update().inc("unreadCount", 1L),
                 UserNotificationState.class
         );
-    }
-
-    private Map<String, Object> buildData(String actorId, String actorName, String actorAvatar, int actorCount, int othersCount) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("actorId", actorId);
-        data.put("actorName", actorName);
-        data.put("firstName", actorName != null ? actorName : actorId);
-        data.put("actorAvatar", actorAvatar);
-        data.put("actorCount", actorCount);
-        data.put("othersCount", othersCount);
-        data.put("count", actorCount);
-        return data;
     }
 }
