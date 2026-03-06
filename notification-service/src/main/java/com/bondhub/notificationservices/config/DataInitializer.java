@@ -68,6 +68,27 @@ public class DataInitializer {
                 "Post liked",
                 "<b>{{actorName}}</b>{{#showSecondActor}} and <b>{{secondActorName}}</b>{{/showSecondActor}}{{#othersCount}} and <b>{{othersCount}} others</b>{{/othersCount}} liked your post");
 
+        seedIfAbsent(NotificationType.POST_COMMENT, NotificationChannel.IN_APP, "vi",
+                "Bình luận mới",
+                "<b>{{actorName}}</b> đã bình luận về bài viết của bạn");
+        seedIfAbsent(NotificationType.POST_COMMENT, NotificationChannel.IN_APP, "en",
+                "New comment",
+                "<b>{{actorName}}</b> commented on your post");
+
+        seedIfAbsent(NotificationType.POST_TAG, NotificationChannel.IN_APP, "vi",
+                "Gắn thẻ",
+                "<b>{{actorName}}</b> đã gắn thẻ bạn trong một bài viết");
+        seedIfAbsent(NotificationType.POST_TAG, NotificationChannel.IN_APP, "en",
+                "Tagged",
+                "<b>{{actorName}}</b> tagged you in a post");
+
+        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.IN_APP, "vi",
+                "Chấp nhận kết bạn",
+                "<b>{{actorName}}</b> đã chấp nhận lời mời kết bạn của bạn");
+        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.IN_APP, "en",
+                "Friend accepted",
+                "<b>{{actorName}}</b> accepted your friend request");
+
         // --- FCM TEMPLATES (Standard Push Notifications) ---
         seedIfAbsent(NotificationType.FRIEND_REQUEST, NotificationChannel.FCM, "vi",
                 "Lời mời kết bạn",

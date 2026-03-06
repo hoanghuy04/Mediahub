@@ -1,23 +1,14 @@
 package com.bondhub.notificationservices.service.delivery.handler;
 
 import com.bondhub.notificationservices.enums.NotificationChannel;
+import com.bondhub.notificationservices.enums.Platform;
 import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.model.UserDevice;
 import com.bondhub.notificationservices.repository.UserDeviceRepository;
 import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
 import com.bondhub.notificationservices.service.preference.UserPreferenceService;
 import com.bondhub.notificationservices.service.presence.PresenceService;
-import com.google.firebase.messaging.AndroidConfig;
-import com.google.firebase.messaging.AndroidNotification;
-import com.google.firebase.messaging.ApnsConfig;
-import com.google.firebase.messaging.Aps;
-import com.google.firebase.messaging.ApsAlert;
-import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.FirebaseMessagingException;
-import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.MessagingErrorCode;
-import com.google.firebase.messaging.WebpushConfig;
-import com.google.firebase.messaging.WebpushNotification;
+import com.google.firebase.messaging.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -83,8 +74,9 @@ public class FcmDeliveryHandler {
             renderData.put("secondActorName", secondActorName != null ? secondActorName : "một người khác");
         }
 
-        String title = templateService.renderTitle(persisted.getType(), NotificationChannel.FCM, locale, renderData);
-        String body = templateService.renderBody(persisted.getType(), NotificationChannel.FCM, locale, renderData);
+        var template = templateService.getTemplate(persisted.getType(), NotificationChannel.FCM, locale);
+        String title = templateService.render(template.titleTemplate(), renderData);
+        String body = templateService.render(template.bodyTemplate(), renderData);
 
         log.info("FCM processing: type={}, recipientId={}, locale={}, title='{}', body='{}'",
                 persisted.getType(), recipientId, locale, title, body);
@@ -118,56 +110,58 @@ public class FcmDeliveryHandler {
 
         String categoryIdentifier = "FRIEND_REQUEST".equals(type) ? "friend_request" : "";
 
-        Message message = Message.builder()
+        Message.Builder messageBuilder = Message.builder()
                 .setToken(device.getFcmToken())
-                .setNotification(com.google.firebase.messaging.Notification.builder()
-                        .setTitle(title)
-                        .setBody(body)
-                        .build())
-                .setAndroidConfig(AndroidConfig.builder()
-                        .setPriority(AndroidConfig.Priority.HIGH)
-                        .setCollapseKey(collapseKey)
-                        .setNotification(AndroidNotification.builder()
-                                .setTitle(title)
-                                .setBody(body)
-                                .setImage(lastActorAvatar != null ? lastActorAvatar : "default_icon")
-                                .setImage(lastActorAvatar)
-                                .setChannelId("default")
-                                .setSound("default")
-                                .build())
-                        .build())
-                .setApnsConfig(ApnsConfig.builder()
-                        .setAps(Aps.builder()
-                                .setAlert(ApsAlert.builder()
-                                        .setTitle(title)
-                                        .setBody(body)
-                                        .build())
-                                .setSound("default")
-                                .setCategory(categoryIdentifier.isEmpty() ? null : categoryIdentifier)
-                                .setThreadId(collapseKey)
-                                .setMutableContent(true)
-                                .build())
-                        .build())
-                .setWebpushConfig(WebpushConfig.builder()
-                        .setNotification(WebpushNotification.builder()
-                                .setTitle(title)
-                                .setBody(body)
-                                .setIcon(lastActorAvatar != null ? lastActorAvatar : "/images/logo.png")
-                                .setBadge("/images/logo.png")
-                                .setTag(collapseKey)
-                                .build())
-                        .build())
-                .putData("type", type)
-                .putData("title", title != null ? title : "")
-                .putData("body", body != null ? body : "")
-                .putData("actorId", lastActorId != null ? lastActorId : "")
-                .putData("actorName", lastActorName != null ? lastActorName : "")
-                .putData("actorAvatar", lastActorAvatar != null ? lastActorAvatar : "")
-                .putData("actorCount", String.valueOf(actorCount))
-                .putData("othersCount", String.valueOf(othersCount))
-                .putData("categoryIdentifier", categoryIdentifier)
-                .putData("requestId", requestId != null ? requestId : "")
-                .build();
+                .putAllData(Map.of(
+                        "type", type,
+                        "title", title != null ? title : "",
+                        "body", body != null ? body : "",
+                        "actorId", lastActorId != null ? lastActorId : "",
+                        "actorName", lastActorName != null ? lastActorName : "",
+                        "actorAvatar", lastActorAvatar != null ? lastActorAvatar : "",
+                        "actorCount", String.valueOf(actorCount),
+                        "othersCount", String.valueOf(othersCount),
+                        "categoryIdentifier", categoryIdentifier,
+                        "requestId", requestId != null ? requestId : ""
+                ));
+
+        if (device.getPlatform() == Platform.WEB) {
+            messageBuilder.setNotification(com.google.firebase.messaging.Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build());
+
+            messageBuilder.setWebpushConfig(WebpushConfig.builder()
+                    .setNotification(WebpushNotification.builder()
+                            .setTitle(title)
+                            .setBody(body)
+                            .setIcon(lastActorAvatar != null ? lastActorAvatar : "/images/logo.png")
+                            .setTag(collapseKey)
+                            .build())
+                    .setFcmOptions(WebpushFcmOptions.withLink("http://localhost:5173/notifications"))
+                    .build());
+        }
+
+        if (device.getPlatform() == Platform.ANDROID) {
+            messageBuilder.setAndroidConfig(AndroidConfig.builder()
+                    .setPriority(AndroidConfig.Priority.HIGH)
+                    .setCollapseKey(collapseKey)
+                    .build());
+        }
+
+        if (device.getPlatform() == Platform.IOS) {
+            messageBuilder.setApnsConfig(ApnsConfig.builder()
+                    .setAps(Aps.builder()
+                            .setCategory(categoryIdentifier.isEmpty() ? null : categoryIdentifier)
+                            .setThreadId(collapseKey)
+                            .setContentAvailable(true)
+                            .setMutableContent(true)
+                            .setSound("default")
+                            .build())
+                    .build());
+        }
+
+        Message message = messageBuilder.build();
 
         try {
             String messageId = FCM_RETRY.execute(ctx -> {
