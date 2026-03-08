@@ -79,15 +79,15 @@ public class UserSettingRepository {
     /**
      * Update General Settings
      */
-    public boolean updateGeneralSettings(String userId, UserSetting.GeneralSettings generalSettings) {
-        return updateNestedSetting(userId, "generalSettings", generalSettings);
+    public boolean updateGeneralSettings(String userId, UserSetting.LanguageAndInterface languageAndInterface) {
+        return updateNestedSetting(userId, "languageAndInterface", languageAndInterface);
     }
 
     /**
      * Update Security Settings
      */
-    public boolean updateSecuritySettings(String userId, UserSetting.SecuritySettings securitySettings) {
-        return updateNestedSetting(userId, "securitySettings", securitySettings);
+    public boolean updateSecuritySettings(String userId, UserSetting.AccountSecuritySettings securitySettings) {
+        return updateNestedSetting(userId, "accountSecuritySettings", securitySettings);
     }
 
     /**
@@ -100,15 +100,15 @@ public class UserSettingRepository {
     /**
      * Update Sync Settings
      */
-    public boolean updateSyncSettings(String userId, UserSetting.SyncSettings syncSettings) {
-        return updateNestedSetting(userId, "syncSettings", syncSettings);
+    public boolean updateSyncSettings(String userId, UserSetting.ContactSettings syncSettings) {
+        return updateNestedSetting(userId, "contactSettings", syncSettings);
     }
 
     /**
      * Update Appearance Settings
      */
-    public boolean updateAppearanceSettings(String userId, UserSetting.AppearanceSettings appearanceSettings) {
-        return updateNestedSetting(userId, "appearanceSettings", appearanceSettings);
+    public boolean updateAppearanceSettings(String userId, UserSetting.LanguageAndInterface appearanceSettings) {
+        return updateNestedSetting(userId, "languageAndInterface", appearanceSettings);
     }
 
     /**
@@ -128,8 +128,8 @@ public class UserSettingRepository {
     /**
      * Update Utilities Settings
      */
-    public boolean updateUtilitiesSettings(String userId, UserSetting.UtilitiesSettings utilitiesSettings) {
-        return updateNestedSetting(userId, "utilitiesSettings", utilitiesSettings);
+    public boolean updateUtilitiesSettings(String userId, UserSetting.DataOnDeviceSettings utilitiesSettings) {
+        return updateNestedSetting(userId, "dataOnDeviceSettings", utilitiesSettings);
     }
 
     /**
@@ -145,6 +145,13 @@ public class UserSettingRepository {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
         return result.getModifiedCount() > 0;
+    }
+
+    /**
+     * Update a whole settings section by name.
+     */
+    public boolean updateSettingSection(String userId, String sectionName, Object sectionValue) {
+        return updateNestedSetting(userId, sectionName, sectionValue);
     }
 
     /**

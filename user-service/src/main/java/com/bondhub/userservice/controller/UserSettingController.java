@@ -1,15 +1,15 @@
 package com.bondhub.userservice.controller;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.userservice.dto.request.settings.*;
 import com.bondhub.userservice.dto.response.settings.UserSettingResponse;
 import com.bondhub.userservice.model.UserSetting;
 import com.bondhub.userservice.service.settings.UserSettingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +24,10 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @Tag(name = "User Settings", description = "APIs for managing user settings with efficient MongoDB dot notation updates")
 @SecurityRequirement(name = "bearer-key")
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserSettingController {
 
-    private final UserSettingService userSettingService;
+    UserSettingService userSettingService;
 
     @Operation(
             summary = "Get my settings",
@@ -49,101 +50,123 @@ public class UserSettingController {
     }
 
     @Operation(
-            summary = "Update general settings",
-            description = "Update general settings (language, friend visibility) for current user"
+            summary = "Update language and interface settings section",
+            description = "Replace the language and interface settings section for current user"
     )
-    @PutMapping("/general")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateGeneralSettings(
-            @Valid @RequestBody GeneralSettingsUpdateRequest request) {
-        log.info("Updating general settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateGeneralSettings(request)));
+    @PutMapping("/me/language-and-interface")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateLanguageAndInterfaceSettings(
+            @RequestBody UserSetting.LanguageAndInterface request) {
+        log.info("Updating language and interface settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateLanguageAndInterfaceSettings(request)));
     }
 
     @Operation(
-            summary = "Update security settings",
-            description = "Update security settings (two-factor authentication) for current user"
+            summary = "Update notification settings section",
+            description = "Replace the notification settings section for current user"
     )
-    @PutMapping("/security")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateSecuritySettings(
-            @Valid @RequestBody SecuritySettingsUpdateRequest request) {
-        log.info("Updating security settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateSecuritySettings(request)));
+    @PutMapping("/me/notification")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateNotificationSettingsSection(
+            @RequestBody UserSetting.NotificationSettings request) {
+        log.info("Updating notification settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateNotificationSettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update privacy settings",
-            description = "Update privacy settings (visibility, who can contact, etc.) for current user"
+            summary = "Update message settings section",
+            description = "Replace the message settings section for current user"
     )
-    @PutMapping("/privacy")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updatePrivacySettings(
-            @Valid @RequestBody PrivacySettingsUpdateRequest request) {
-        log.info("Updating privacy settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updatePrivacySettings(request)));
+    @PutMapping("/me/message")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateMessageSettingsSection(
+            @RequestBody UserSetting.MessageSettings request) {
+        log.info("Updating message settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateMessageSettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update sync settings",
-            description = "Update synchronization settings for current user"
+            summary = "Update call settings section",
+            description = "Replace the call settings section for current user"
     )
-    @PutMapping("/sync")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateSyncSettings(
-            @Valid @RequestBody SyncSettingsUpdateRequest request) {
-        log.info("Updating sync settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateSyncSettings(request)));
+    @PutMapping("/me/call")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateCallSettingsSection(
+            @RequestBody UserSetting.CallSettings request) {
+        log.info("Updating call settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateCallSettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update appearance settings",
-            description = "Update appearance settings (theme) for current user"
+            summary = "Update privacy settings section",
+            description = "Replace the privacy settings section for current user"
     )
-    @PutMapping("/appearance")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateAppearanceSettings(
-            @Valid @RequestBody AppearanceSettingsUpdateRequest request) {
-        log.info("Updating appearance settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateAppearanceSettings(request)));
+    @PutMapping("/me/privacy")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updatePrivacySettingsSection(
+            @RequestBody UserSetting.PrivacySettings request) {
+        log.info("Updating privacy settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updatePrivacySettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update message settings",
-            description = "Update message-related settings (typing status, quick response, etc.) for current user"
+            summary = "Update contact settings section",
+            description = "Replace the contact settings section for current user"
     )
-    @PutMapping("/message")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateMessageSettings(
-            @Valid @RequestBody MessageSettingsUpdateRequest request) {
-        log.info("Updating message settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateMessageSettings(request)));
+    @PutMapping("/me/contact")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateContactSettingsSection(
+            @RequestBody UserSetting.ContactSettings request) {
+        log.info("Updating contact settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateContactSettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update notification settings",
-            description = "Update notification preferences for current user"
+            summary = "Update backup and restore settings section",
+            description = "Replace the backup and restore settings section for current user"
     )
-    @PutMapping("/notification")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateNotificationSettings(
-            @Valid @RequestBody NotificationSettingsUpdateRequest request) {
-        log.info("Updating notification settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateNotificationSettings(request)));
+    @PutMapping("/me/backup-restore")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateBackupRestoreSettingsSection(
+            @RequestBody UserSetting.BackupRestoreSettings request) {
+        log.info("Updating backup and restore settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateBackupRestoreSettingsSection(request)));
     }
 
     @Operation(
-            summary = "Update utilities settings",
-            description = "Update utilities settings (sticker suggestions, etc.) for current user"
+            summary = "Update account security settings section",
+            description = "Replace the account security settings section for current user"
     )
-    @PutMapping("/utilities")
-    public ResponseEntity<ApiResponse<UserSettingResponse>> updateUtilitiesSettings(
-            @Valid @RequestBody UtilitiesSettingsUpdateRequest request) {
-        log.info("Updating utilities settings");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateUtilitiesSettings(request)));
+    @PutMapping("/me/account-security")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateAccountSecuritySettingsSection(
+            @RequestBody UserSetting.AccountSecuritySettings request) {
+        log.info("Updating account security settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateAccountSecuritySettingsSection(request)));
     }
 
     @Operation(
-            summary = "Get general settings",
-            description = "Retrieve only general settings for current user"
+            summary = "Update journal settings section",
+            description = "Replace the journal settings section for current user"
     )
-    @GetMapping("/me/general")
-    public ResponseEntity<ApiResponse<UserSetting.GeneralSettings>> getGeneralSettings() {
-        log.info("Getting general settings for current user");
-        return ResponseEntity.ok(ApiResponse.success(userSettingService.getGeneralSettings()));
+    @PutMapping("/me/journal")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateJournalSettingsSection(
+            @RequestBody UserSetting.JournalSettings request) {
+        log.info("Updating journal settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateJournalSettingsSection(request)));
+    }
+
+    @Operation(
+            summary = "Update data on device settings section",
+            description = "Replace the data on device settings section for current user"
+    )
+    @PutMapping("/me/data-on-device")
+    public ResponseEntity<ApiResponse<UserSettingResponse>> updateDataOnDeviceSettingsSection(
+            @RequestBody UserSetting.DataOnDeviceSettings request) {
+        log.info("Updating data on device settings section");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.updateDataOnDeviceSettingsSection(request)));
+    }
+
+    @Operation(
+            summary = "Get language and interface settings",
+            description = "Retrieve only language and interface settings for current user"
+    )
+    @GetMapping("/me/language-and-interface")
+    public ResponseEntity<ApiResponse<UserSetting.LanguageAndInterface>> getLanguageAndInterfaceSettings() {
+        log.info("Getting language and interface settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getLanguageAndInterfaceSettings()));
     }
 
     @Operation(
@@ -164,6 +187,76 @@ public class UserSettingController {
     public ResponseEntity<ApiResponse<UserSetting.NotificationSettings>> getNotificationSettings() {
         log.info("Getting notification settings for current user");
         return ResponseEntity.ok(ApiResponse.success(userSettingService.getNotificationSettings()));
+    }
+
+    @Operation(
+            summary = "Get message settings",
+            description = "Retrieve only message settings for current user"
+    )
+    @GetMapping("/me/message")
+    public ResponseEntity<ApiResponse<UserSetting.MessageSettings>> getMessageSettings() {
+        log.info("Getting message settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getMessageSettings()));
+    }
+
+    @Operation(
+            summary = "Get call settings",
+            description = "Retrieve only call settings for current user"
+    )
+    @GetMapping("/me/call")
+    public ResponseEntity<ApiResponse<UserSetting.CallSettings>> getCallSettings() {
+        log.info("Getting call settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getCallSettings()));
+    }
+
+    @Operation(
+            summary = "Get contact settings",
+            description = "Retrieve only contact settings for current user"
+    )
+    @GetMapping("/me/contact")
+    public ResponseEntity<ApiResponse<UserSetting.ContactSettings>> getContactSettings() {
+        log.info("Getting contact settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getContactSettings()));
+    }
+
+    @Operation(
+            summary = "Get backup and restore settings",
+            description = "Retrieve only backup and restore settings for current user"
+    )
+    @GetMapping("/me/backup-restore")
+    public ResponseEntity<ApiResponse<UserSetting.BackupRestoreSettings>> getBackupRestoreSettings() {
+        log.info("Getting backup and restore settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getBackupRestoreSettings()));
+    }
+
+    @Operation(
+            summary = "Get account security settings",
+            description = "Retrieve only account security settings for current user"
+    )
+    @GetMapping("/me/account-security")
+    public ResponseEntity<ApiResponse<UserSetting.AccountSecuritySettings>> getAccountSecuritySettings() {
+        log.info("Getting account security settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getAccountSecuritySettings()));
+    }
+
+    @Operation(
+            summary = "Get journal settings",
+            description = "Retrieve only journal settings for current user"
+    )
+    @GetMapping("/me/journal")
+    public ResponseEntity<ApiResponse<UserSetting.JournalSettings>> getJournalSettings() {
+        log.info("Getting journal settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getJournalSettings()));
+    }
+
+    @Operation(
+            summary = "Get data on device settings",
+            description = "Retrieve only data on device settings for current user"
+    )
+    @GetMapping("/me/data-on-device")
+    public ResponseEntity<ApiResponse<UserSetting.DataOnDeviceSettings>> getDataOnDeviceSettings() {
+        log.info("Getting data on device settings for current user");
+        return ResponseEntity.ok(ApiResponse.success(userSettingService.getDataOnDeviceSettings()));
     }
 
     @Operation(

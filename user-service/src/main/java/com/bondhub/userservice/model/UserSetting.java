@@ -1,140 +1,164 @@
 package com.bondhub.userservice.model;
 
-import com.bondhub.userservice.model.enums.PrivacyLevel;
-import com.bondhub.userservice.model.enums.DobVisibility;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+import com.bondhub.userservice.model.enums.AppLanguage;
+import com.bondhub.userservice.model.enums.AudioQuality;
+import com.bondhub.userservice.model.enums.BackupFrequency;
+import com.bondhub.userservice.model.enums.ChatFontSize;
+import com.bondhub.userservice.model.enums.SettingScope;
+import com.bondhub.userservice.model.enums.ThemeMode;
+import com.bondhub.userservice.model.enums.VideoQuality;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Getter
-@Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserSetting {
 
     @Builder.Default
-    GeneralSettings generalSettings = new GeneralSettings();
+    private LanguageAndInterface languageAndInterface = new LanguageAndInterface();
 
     @Builder.Default
-    SecuritySettings securitySettings = new SecuritySettings();
+    private NotificationSettings notificationSettings = new NotificationSettings();
 
     @Builder.Default
-    PrivacySettings privacySettings = new PrivacySettings();
+    private MessageSettings messageSettings = new MessageSettings();
 
     @Builder.Default
-    SyncSettings syncSettings = new SyncSettings();
+    private CallSettings callSettings = new CallSettings();
 
     @Builder.Default
-    AppearanceSettings appearanceSettings = new AppearanceSettings();
+    private PrivacySettings privacySettings = new PrivacySettings();
 
     @Builder.Default
-    MessageSettings messageSettings = new MessageSettings();
+    private ContactSettings contactSettings = new ContactSettings();
 
     @Builder.Default
-    NotificationSettings notificationSettings = new NotificationSettings();
+    private BackupRestoreSettings backupRestoreSettings = new BackupRestoreSettings();
 
     @Builder.Default
-    UtilitiesSettings utilitiesSettings = new UtilitiesSettings();
+    private AccountSecuritySettings accountSecuritySettings = new AccountSecuritySettings();
+
+    @Builder.Default
+    private JournalSettings journalSettings = new JournalSettings();
+
+    @Builder.Default
+    private DataOnDeviceSettings dataOnDeviceSettings = new DataOnDeviceSettings();
 
     @Data
-    public static class GeneralSettings {
-        //true = show all friend, false = only show friend who using on bondhub
-        private boolean showAllFriends = false;
-        private boolean languageEn = false ;
-    }
-
-    @Data
-    public static class SecuritySettings {
-        private boolean twoFactorEnabled = false;
-    }
-
-    @Data
-    public static class PrivacySettings {
-        //Personal
-        private DobVisibility showDob = DobVisibility.FULL_DATE;
-        private boolean showActiveStatus = true;
-
-        //Text and call
-        private boolean showReadStatus = true;
-        private PrivacyLevel canText = PrivacyLevel.EVERYBODY;
-        private PrivacyLevel canCall = PrivacyLevel.EVERYBODY;
-
-        //Work: Blocked list
-        //
-
-        //Post
-        private boolean showPosts = true;
-        private LocalDateTime showPostAfter = null;
-
-        //Search source
-        private boolean allowSearchOnPhoneNumber = true;
-
-    }
-
-    @Data
-    public static class SyncSettings {
-        private boolean syncSuggestion = true;
-        private boolean showSyncProgress = true;
-    }
-
-    @Data
-    public static class AppearanceSettings {
-        //true = light, false = dark
-        private boolean theme = true;
-    }
-
-    @Data
-    public static class MessageSettings {
-        //Quick response
-        private boolean quickResponseEnable = false;
-
-        //Separate Priority and Other
-        private boolean separatePriorityAndOtherEnable = true;
-
-        //Other
-        private boolean showTypingStatus = true;
+    public static class LanguageAndInterface {
+        // Effective language for current device (resolved in service); also used as fallback.
+        private AppLanguage language = AppLanguage.EN;
+        // Per-device language preference keyed by deviceId.
+        private Map<String, AppLanguage> languageByDeviceId = new HashMap<>();
+        private ThemeMode themeMode = ThemeMode.SYSTEM;
+        private double fontScale = 1.0;
 
     }
 
     @Data
     public static class NotificationSettings {
-
-        //Direct message
-        private boolean notifyNewMessageFromDirect;
-        private boolean previewNewMessageFromDirect;
-
-        //Group message
-        private boolean notifyNewMessageFromGroup;
-
-        //Call
-        private boolean notifyCall;
-
-
-        //Post
-        private boolean notifyNewPostFromFriend;
-
-        //Dob
-        private boolean notifyDOB;
-
-        //Notification in app
-        private boolean notifyNewMessage;
-        private boolean shakeOnNewMessage;
-        private boolean previewNewMessage;
+        private boolean allowNotifications = true;
+        private boolean notifSound = true;
+        private boolean notifVibration = true;
+        private boolean notifMessages = true;
+        private boolean notifGroups = true;
+        private boolean notifFriendRequests = true;
+        private DoNotDisturbSettings doNotDisturb = new DoNotDisturbSettings();
     }
 
     @Data
-    public static class UtilitiesSettings {
-        private boolean stickerSuggestion = true;
-        //
+    public static class DoNotDisturbSettings {
+        private boolean dndEnabled = false;
+        private String dndStartTime = "22:00";
+        private String dndEndTime = "07:00";
     }
 
+    @Data
+    public static class MessageSettings {
+        private boolean messagePreview = true;
+        private ChatFontSize fontSize = ChatFontSize.MEDIUM;
+        private String chatTheme = "default";
+        private boolean autoDownload = true;
+        private boolean saveToLibrary = false;
+        private boolean endToEndEncryption = true;
+        private boolean showArchivedMessages = false;
+    }
 
+    @Data
+    public static class CallSettings {
+        private boolean allowCalls = true;
+        private boolean allowVideoCalls = true;
+        private AudioQuality audioQuality = AudioQuality.AUTOMATIC;
+        private VideoQuality videoQuality = VideoQuality.HD;
+        private String ringtone = "default";
+        private boolean keepCallHistory = true;
+    }
+
+    @Data
+    public static class PrivacySettings {
+        private SettingScope birthdayVisibility = SettingScope.FRIENDS;
+        private boolean showAccessStatus = true;
+        private boolean showSeenStatus = true;
+        private SettingScope allowMessaging = SettingScope.EVERYONE;
+        private SettingScope allowCallsPrivacy = SettingScope.EVERYONE;
+        private SettingScope allowViewAndCommentOnJournal = SettingScope.FRIENDS;
+        private boolean blockUnknownUsers = false;
+        private boolean friendSourceByPhone = true;
+        private boolean friendSourceByQr = true;
+        private List<String> utilityPermissions = new ArrayList<>();
+        private List<String> blockedUserIds = new ArrayList<>();
+    }
+
+    @Data
+    public static class ContactSettings {
+        private boolean syncContacts = false;
+        private boolean autoAddFromPhoneContacts = false;
+    }
+
+    @Data
+    public static class BackupRestoreSettings {
+        private boolean autoBackup = false;
+        private boolean backupOverWifi = true;
+        private BackupFrequency backupFrequency = BackupFrequency.WEEKLY;
+        private LocalDateTime lastBackupAt = null;
+        private BackupContentSettings backupContent = new BackupContentSettings();
+    }
+
+    @Data
+    public static class BackupContentSettings {
+        private boolean backupMessages = true;
+        private boolean backupPhotos = true;
+        private boolean backupVideos = false;
+        private boolean backupFiles = false;
+    }
+
+    @Data
+    public static class AccountSecuritySettings {
+        private boolean twoFactorEnabled = false;
+        private boolean lockAppEnabled = false;
+        private boolean biometricsEnabled = false;
+        private boolean logoutOtherDevicesOnPasswordChange = true;
+    }
+
+    @Data
+    public static class JournalSettings {
+        private String filterActivityType = "ALL";
+        private String filterTimeRange = "ALL_TIME";
+    }
+
+    @Data
+    public static class DataOnDeviceSettings {
+        private boolean allowCellularMediaDownload = false;
+        private int cacheCleanupThresholdMB = 500;
+    }
 }

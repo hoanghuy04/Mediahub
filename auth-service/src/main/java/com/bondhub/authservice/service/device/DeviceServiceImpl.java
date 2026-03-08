@@ -2,6 +2,7 @@ package com.bondhub.authservice.service.device;
 
 import com.bondhub.authservice.dto.device.request.DeviceCreateRequest;
 import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
+import com.bondhub.authservice.dto.device.response.DeviceListResponse;
 import com.bondhub.authservice.dto.device.response.DeviceResponse;
 import com.bondhub.authservice.mapper.DeviceMapper;
 import com.bondhub.authservice.model.Device;
@@ -92,28 +93,6 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     @Override
-    public DeviceResponse updateDevice(String id, DeviceUpdateRequest request) {
-        log.info("Updating device with id: {}", id);
-        Device deviceToUpdate = deviceRepository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Device not found with id: {}", id);
-                    return new AppException(ErrorCode.DEV_DEVICE_NOT_FOUND);
-                });
-
-        if (request.sessionId() != null && !request.sessionId().equals(deviceToUpdate.getSessionId())) {
-            if (deviceRepository.existsBySessionId(request.sessionId())) {
-                log.warn("SessionId {} already exists for another device", request.sessionId());
-                throw new AppException(ErrorCode.DEV_SESSION_ID_ALREADY_USED);
-            }
-        }
-
-        deviceMapper.updateEntityFromRequest(deviceToUpdate, request);
-        Device updatedDevice = deviceRepository.save(deviceToUpdate);
-        log.info("Device updated successfully with id: {}", id);
-        return deviceMapper.toResponse(updatedDevice, isSessionActive(updatedDevice.getSessionId()));
-    }
-
-    @Override
     public DeviceResponse updateDeviceBySessionId(String sessionId, DeviceUpdateRequest request) {
         log.info("Updating device with sessionId: {}", sessionId);
         Device deviceToUpdate = deviceRepository.findBySessionId(sessionId)
@@ -126,34 +105,6 @@ public class DeviceServiceImpl implements DeviceService {
         Device updatedDevice = deviceRepository.save(deviceToUpdate);
         log.info("Device updated successfully with sessionId: {}", sessionId);
         return deviceMapper.toResponse(updatedDevice, isSessionActive(updatedDevice.getSessionId()));
-    }
-
-    @Override
-    public void deleteDevice(String id) {
-        log.info("Deleting device with id: {}", id);
-
-        if (!deviceRepository.existsById(id)) {
-            log.warn("Device not found with id: {}", id);
-            throw new AppException(ErrorCode.DEV_DEVICE_NOT_FOUND);
-        }
-
-        deviceRepository.deleteById(id);
-        log.info("Device deleted successfully with id: {}", id);
-    }
-
-    @Override
-    public void deleteDevicesByAccountId(String accountId) {
-        log.info("Deleting all devices for accountId: {}", accountId);
-        deviceRepository.deleteByAccountId(accountId);
-        log.info("All devices deleted for accountId: {}", accountId);
-    }
-
-    @Override
-    public boolean existsBySessionId(String sessionId) {
-        log.info("Checking if device exists with sessionId: {}", sessionId);
-        boolean exists = deviceRepository.existsBySessionId(sessionId);
-        log.info("Device with sessionId {} exists: {}", sessionId, exists);
-        return exists;
     }
 
     @Override
@@ -196,6 +147,31 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     @Override
+    public DeviceListResponse getGroupedActiveDevicesWithSessions(String accountId, String currentSessionId) {
+        log.info("Fetching and grouping active devices with sessions for accountId: {}", accountId);
+
+        List<DeviceResponse> activeDevices = getActiveDevicesWithSessions(accountId, currentSessionId);
+
+        List<DeviceResponse> currentDevice = activeDevices.stream()
+                .filter(device -> Boolean.TRUE.equals(device.isCurrentDevice()))
+                .toList();
+
+        List<DeviceResponse> otherDevices = activeDevices.stream()
+                .filter(device -> !Boolean.TRUE.equals(device.isCurrentDevice()))
+                .toList();
+
+        return new DeviceListResponse(currentDevice, otherDevices);
+    }
+
+    private boolean isSessionActive(String sessionId) {
+        if (sessionId == null) {
+            return false;
+        }
+        return refreshTokenSessionRepository.findById(sessionId)
+                .map(RefreshTokenSession::isValid)
+                .orElse(false);
+    }
+
     public List<DeviceResponse> getActiveDevicesWithSessions(String accountId, String currentSessionId) {
         log.info("Fetching active devices with sessions for accountId: {}", accountId);
 
@@ -257,12 +233,4 @@ public class DeviceServiceImpl implements DeviceService {
         return activeDevices;
     }
 
-    private boolean isSessionActive(String sessionId) {
-        if (sessionId == null) {
-            return false;
-        }
-        return refreshTokenSessionRepository.findById(sessionId)
-                .map(RefreshTokenSession::isValid)
-                .orElse(false);
-    }
 }

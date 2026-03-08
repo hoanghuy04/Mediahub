@@ -147,6 +147,10 @@ public class AuthController {
 
         TokenResponse tokenResponse = authenticationService.resetPassword(request, userAgent, ipAddress);
 
+        if (Boolean.TRUE.equals(request.logoutOtherDevices())) {
+            authenticationService.logoutAllOtherDevices(tokenResponse.refreshToken());
+        }
+
         // Set refresh token in HttpOnly cookie
         ResponseCookie cookie = cookieUtil.createRefreshTokenCookie(
                 tokenResponse.refreshToken(), tokenResponse.refreshTokenExpirationMs());
@@ -162,11 +166,16 @@ public class AuthController {
     @PostMapping("/change-password")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-            @Valid @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequest request,
+            @CookieValue(value = CookieUtil.REFRESH_TOKEN_COOKIE_NAME, required = false) String cookieRefreshToken) {
 
         log.info("POST /auth/change-password - Password change request");
 
         authenticationService.changePassword(request);
+
+        if (Boolean.TRUE.equals(request.logoutOtherDevices())) {
+            authenticationService.logoutAllOtherDevices(cookieRefreshToken);
+        }
 
         return ResponseEntity.ok(ApiResponse.successWithoutData());
     }

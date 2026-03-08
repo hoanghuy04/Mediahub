@@ -1,33 +1,33 @@
 package com.bondhub.authservice.service.auth;
 
 import com.bondhub.authservice.client.UserServiceClient;
+import com.bondhub.authservice.config.MailTemplate;
 import com.bondhub.authservice.dto.auth.request.*;
 import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
 import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
 import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
-import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.enums.DeviceType;
+import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.model.Account;
-import com.bondhub.authservice.model.redis.RefreshTokenSession;
-import com.bondhub.authservice.service.device.DeviceService;
-import com.bondhub.common.dto.client.userservice.user.request.UserCreateRequest;
-import com.bondhub.common.event.account.AccountRegisteredEvent;
-import com.bondhub.common.event.user.UserIndexEvent;
-import com.bondhub.common.model.kafka.EventType;
 import com.bondhub.authservice.model.redis.PendingRegistration;
+import com.bondhub.authservice.model.redis.RefreshTokenSession;
 import com.bondhub.authservice.repository.AccountRepository;
 import com.bondhub.authservice.repository.redis.PendingRegistrationRepository;
+import com.bondhub.authservice.service.device.DeviceService;
 import com.bondhub.authservice.service.mail.MailService;
 import com.bondhub.authservice.service.otp.OtpService;
 import com.bondhub.authservice.service.token.TokenStoreService;
-import com.bondhub.common.publisher.OutboxEventPublisher;
-import com.bondhub.common.utils.SecurityUtil;
+import com.bondhub.authservice.util.TokenProvider;
+import com.bondhub.common.dto.client.userservice.user.request.UserCreateRequest;
 import com.bondhub.common.enums.Role;
+import com.bondhub.common.event.user.UserIndexEvent;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
+import com.bondhub.common.model.kafka.EventType;
+import com.bondhub.common.publisher.OutboxEventPublisher;
 import com.bondhub.common.utils.JwtUtil;
-import com.bondhub.authservice.util.TokenProvider;
+import com.bondhub.common.utils.SecurityUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -248,7 +248,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         pendingRegistrationRepository.save(pendingReg);
 
-        mailService.sendOtpEmail(request.email(), otp, "Registration Verification");
+        mailService.sendOtpEmail(
+                request.email(),
+                otp,
+                MailTemplate.REGISTRATION_OTP_TEMPLATE_ID,
+                "Registration Verification");
 
         log.info("✅ Registration initiated successfully for: {}", request.email());
 
@@ -340,7 +344,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         String otp = otpService.generateAndStoreOtp(request.email(), OtpPurpose.PASSWORD_RESET);
 
-        mailService.sendPasswordResetOtpEmail(request.email(), otp);
+        mailService.sendOtpEmail(
+                request.email(),
+                otp,
+                MailTemplate.FORGOT_PASSWORD_OTP_TEMPLATE_ID,
+                "Password Reset Request");
 
         log.info("✅ Password reset OTP sent to: {}", request.email());
         return ForgotPasswordResponse.of(request.email());

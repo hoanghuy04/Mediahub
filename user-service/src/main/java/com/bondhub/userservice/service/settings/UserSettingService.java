@@ -19,50 +19,61 @@ public interface UserSettingService {
      */
     UserSettingResponse getSettingsByUserId(String userId);
 
-    /**
-     * Update general settings for current user
-     */
-    UserSettingResponse updateGeneralSettings(GeneralSettingsUpdateRequest request);
 
     /**
-     * Update security settings for current user
+     * Update language and interface settings for current user
      */
-    UserSettingResponse updateSecuritySettings(SecuritySettingsUpdateRequest request);
+    UserSettingResponse updateLanguageAndInterfaceSettings(UserSetting.LanguageAndInterface request);
 
     /**
-     * Update privacy settings for current user
+     * Update notification settings section for current user
      */
-    UserSettingResponse updatePrivacySettings(PrivacySettingsUpdateRequest request);
+    UserSettingResponse updateNotificationSettingsSection(UserSetting.NotificationSettings request);
 
     /**
-     * Update sync settings for current user
+     * Update message settings section for current user
      */
-    UserSettingResponse updateSyncSettings(SyncSettingsUpdateRequest request);
+    UserSettingResponse updateMessageSettingsSection(UserSetting.MessageSettings request);
 
     /**
-     * Update appearance settings for current user
+     * Update call settings section for current user
      */
-    UserSettingResponse updateAppearanceSettings(AppearanceSettingsUpdateRequest request);
+    UserSettingResponse updateCallSettingsSection(UserSetting.CallSettings request);
 
     /**
-     * Update message settings for current user
+     * Update privacy settings section for current user
      */
-    UserSettingResponse updateMessageSettings(MessageSettingsUpdateRequest request);
+    UserSettingResponse updatePrivacySettingsSection(UserSetting.PrivacySettings request);
 
     /**
-     * Update notification settings for current user
+     * Update contact settings section for current user
      */
-    UserSettingResponse updateNotificationSettings(NotificationSettingsUpdateRequest request);
+    UserSettingResponse updateContactSettingsSection(UserSetting.ContactSettings request);
 
     /**
-     * Update utilities settings for current user
+     * Update backup and restore settings section for current user
      */
-    UserSettingResponse updateUtilitiesSettings(UtilitiesSettingsUpdateRequest request);
+    UserSettingResponse updateBackupRestoreSettingsSection(UserSetting.BackupRestoreSettings request);
 
     /**
-     * Get specific general settings
+     * Update account security settings section for current user
      */
-    UserSetting.GeneralSettings getGeneralSettings();
+    UserSettingResponse updateAccountSecuritySettingsSection(UserSetting.AccountSecuritySettings request);
+
+    /**
+     * Update journal settings section for current user
+     */
+    UserSettingResponse updateJournalSettingsSection(UserSetting.JournalSettings request);
+
+    /**
+     * Update data on device settings section for current user
+     */
+    UserSettingResponse updateDataOnDeviceSettingsSection(UserSetting.DataOnDeviceSettings request);
+
+    /**
+     * Get language and interface settings
+     */
+    UserSetting.LanguageAndInterface getLanguageAndInterfaceSettings();
 
     /**
      * Get specific privacy settings
@@ -73,6 +84,41 @@ public interface UserSettingService {
      * Get specific notification settings
      */
     UserSetting.NotificationSettings getNotificationSettings();
+
+    /**
+     * Get specific message settings
+     */
+    UserSetting.MessageSettings getMessageSettings();
+
+    /**
+     * Get specific call settings
+     */
+    UserSetting.CallSettings getCallSettings();
+
+    /**
+     * Get specific contact settings
+     */
+    UserSetting.ContactSettings getContactSettings();
+
+    /**
+     * Get specific backup and restore settings
+     */
+    UserSetting.BackupRestoreSettings getBackupRestoreSettings();
+
+    /**
+     * Get specific account security settings
+     */
+    UserSetting.AccountSecuritySettings getAccountSecuritySettings();
+
+    /**
+     * Get specific journal settings
+     */
+    UserSetting.JournalSettings getJournalSettings();
+
+    /**
+     * Get specific data on device settings
+     */
+    UserSetting.DataOnDeviceSettings getDataOnDeviceSettings();
 
     /**
      * Reset all settings to default for current user
