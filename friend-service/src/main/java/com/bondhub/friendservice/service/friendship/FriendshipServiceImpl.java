@@ -231,6 +231,16 @@ public class FriendshipServiceImpl implements FriendshipService {
         String currentUserId = securityUtil.getCurrentUserId();
         log.info("Checking friendship status between {} and {}", currentUserId, userId);
 
+        if (currentUserId == null || currentUserId.isEmpty() || userId == null || userId.isEmpty()) {
+            log.warn("Invalid userId for friendship check: currentUserId={}, userId={}", currentUserId, userId);
+            return FriendshipStatusResponse.builder()
+                    .areFriends(false)
+                    .status(null)
+                    .friendshipId(null)
+                    .requestedBy(null)
+                    .build();
+        }
+
         Optional<FriendShip> friendship = friendShipRepository
                 .findFriendshipBetweenUsers(currentUserId, userId);
 
