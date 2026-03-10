@@ -1,35 +1,33 @@
 package com.bondhub.authservice.service.auth;
 
 import com.bondhub.authservice.client.UserServiceClient;
-import com.bondhub.authservice.dto.auth.request.ForgotPasswordRequest;
-import com.bondhub.authservice.dto.auth.request.LoginRequest;
-import com.bondhub.authservice.dto.auth.request.RefreshRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterInitRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterRequest;
-import com.bondhub.authservice.dto.auth.request.RegisterVerifyRequest;
-import com.bondhub.authservice.dto.auth.request.ResetPasswordRequest;
+import com.bondhub.authservice.config.MailTemplate;
+import com.bondhub.authservice.dto.auth.request.*;
 import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
 import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
-import com.bondhub.authservice.enums.OtpPurpose;
+import com.bondhub.authservice.dto.device.request.DeviceUpdateRequest;
 import com.bondhub.authservice.enums.DeviceType;
+import com.bondhub.authservice.enums.OtpPurpose;
 import com.bondhub.authservice.model.Account;
-import com.bondhub.common.dto.client.userservice.user.request.UserCreateRequest;
-import com.bondhub.common.event.account.AccountRegisteredEvent;
-import com.bondhub.common.event.user.UserIndexEvent;
-import com.bondhub.common.model.kafka.EventType;
 import com.bondhub.authservice.model.redis.PendingRegistration;
+import com.bondhub.authservice.model.redis.RefreshTokenSession;
 import com.bondhub.authservice.repository.AccountRepository;
 import com.bondhub.authservice.repository.redis.PendingRegistrationRepository;
+import com.bondhub.authservice.service.device.DeviceService;
 import com.bondhub.authservice.service.mail.MailService;
 import com.bondhub.authservice.service.otp.OtpService;
 import com.bondhub.authservice.service.token.TokenStoreService;
-import com.bondhub.common.utils.SecurityUtil;
+import com.bondhub.authservice.util.TokenProvider;
+import com.bondhub.common.dto.client.userservice.user.request.UserCreateRequest;
 import com.bondhub.common.enums.Role;
+import com.bondhub.common.event.user.UserIndexEvent;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
+import com.bondhub.common.model.kafka.EventType;
+import com.bondhub.common.publisher.OutboxEventPublisher;
 import com.bondhub.common.utils.JwtUtil;
-import com.bondhub.authservice.util.TokenProvider;
+import com.bondhub.common.utils.SecurityUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -39,6 +37,8 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -58,7 +58,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     UserServiceClient userServiceClient;
     MessageSource messageSource;
     TokenProvider tokenProvider;
-    com.bondhub.common.publisher.OutboxEventPublisher outboxEventPublisher;
+    OutboxEventPublisher outboxEventPublisher;
+    DeviceService deviceService;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -247,7 +248,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         pendingRegistrationRepository.save(pendingReg);
 
-        mailService.sendOtpEmail(request.email(), otp, "Registration Verification");
+        mailService.sendOtpEmail(
+                request.email(),
+                otp,
+                MailTemplate.REGISTRATION_OTP_TEMPLATE_ID,
+                "Registration Verification");
 
         log.info("✅ Registration initiated successfully for: {}", request.email());
 
@@ -303,7 +308,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             if (response != null && response.data() != null) {
                 userId = response.data().id();
                 log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), userId);
-                
+
                 UserIndexEvent indexEvent = UserIndexEvent.builder()
                         .userId(userId)
                         .phoneNumber(account.getPhoneNumber())
@@ -314,8 +319,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         userId,
                         "User",
                         EventType.USER_INDEX,
-                        indexEvent
-                );
+                        indexEvent);
                 log.info("📤 Published USER_INDEX event for userId: {}", userId);
             }
         } catch (Exception e) {
@@ -340,7 +344,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         String otp = otpService.generateAndStoreOtp(request.email(), OtpPurpose.PASSWORD_RESET);
 
-        mailService.sendPasswordResetOtpEmail(request.email(), otp);
+        mailService.sendOtpEmail(
+                request.email(),
+                otp,
+                MailTemplate.FORGOT_PASSWORD_OTP_TEMPLATE_ID,
+                "Password Reset Request");
 
         log.info("✅ Password reset OTP sent to: {}", request.email());
         return ForgotPasswordResponse.of(request.email());
@@ -373,5 +381,113 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 DeviceType.WEB,
                 userAgent,
                 ipAddress);
+    }
+
+    @Override
+    public void logoutAllOtherDevices(String refreshToken) {
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        String currentSessionId = jwtUtil.extractSessionId(refreshToken);
+        String userId = jwtUtil.extractAccountId(refreshToken);
+
+        if (currentSessionId == null || userId == null) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        log.info("Logging out all other devices for user: {}, currentSessionId: {}", userId, currentSessionId);
+
+        // Revoke all other refresh sessions in Redis (marks revoked=true, keeps the
+        // record for JTI lookup)
+        List<String> revokedSessionIds = tokenStoreService.revokeAllUserRefreshSessionsExcept(userId, currentSessionId);
+
+        long accessTokenTtlMs = jwtUtil.getAccessTokenExpirationSeconds() * 1000;
+
+        // For each revoked session: blacklist its paired access token + update MongoDB
+        // device record
+        for (String sessionId : revokedSessionIds) {
+            try {
+                tokenStoreService.revokeAndBlacklistSession(sessionId, userId, accessTokenTtlMs);
+
+                DeviceUpdateRequest updateRequest = DeviceUpdateRequest.builder()
+                        .lastActiveTime(LocalDateTime.now())
+                        .build();
+                deviceService.updateDeviceBySessionId(sessionId, updateRequest);
+                log.debug("Force-logged out session and blacklisted access token: {}", sessionId);
+            } catch (Exception e) {
+                log.warn("Failed to fully process logout for session: {}", sessionId);
+            }
+        }
+
+        log.info("Logged out {} other devices for user: {}", revokedSessionIds.size(), userId);
+    }
+
+    @Override
+    public void logoutDevice(String targetSessionId, String refreshToken) {
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        String userId = jwtUtil.extractAccountId(refreshToken);
+        if (userId == null) {
+            throw new AppException(ErrorCode.JWT_INVALID_TOKEN);
+        }
+
+        log.info("Request to logout device session {} by user {}", targetSessionId, userId);
+
+        // Verify ownership and existence via TokenStoreService
+        RefreshTokenSession session = tokenStoreService
+                .findRefreshSession(targetSessionId)
+                .orElseThrow(() -> new AppException(ErrorCode.DEV_DEVICE_NOT_FOUND));
+
+        if (!session.getAccountId().equals(userId)) {
+            log.warn("User {} attempted to logout session {} belonging to {}", userId, targetSessionId,
+                    session.getAccountId());
+            throw new AppException(ErrorCode.AUTH_UNAUTHORIZED);
+        }
+
+        // Revoke the refresh session AND blacklist the paired access token immediately
+        long accessTokenTtlMs = jwtUtil.getAccessTokenExpirationSeconds() * 1000;
+        tokenStoreService.revokeAndBlacklistSession(targetSessionId, userId, accessTokenTtlMs);
+
+        // Update device in MongoDB
+        try {
+            DeviceUpdateRequest updateRequest = DeviceUpdateRequest.builder()
+                    .lastActiveTime(LocalDateTime.now())
+                    .build();
+            deviceService.updateDeviceBySessionId(targetSessionId, updateRequest);
+            log.info("✅ Device logged out and access token blacklisted: {}", targetSessionId);
+        } catch (Exception e) {
+            log.warn("⚠️ Could not update device details for session: {}", targetSessionId);
+        }
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        log.info("Changing password for authenticated user");
+
+        // Get currently authenticated user's ID
+        String accountId = securityUtil.getCurrentAccountId();
+
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
+
+        // Verify old password
+        if (!passwordEncoder.matches(request.oldPassword(), account.getPassword())) {
+            log.warn("Invalid old password for account: {}", accountId);
+            throw new AppException(ErrorCode.AUTH_INVALID_OLD_PASSWORD);
+        }
+
+        // Validate new password is different from old
+        if (request.oldPassword().equals(request.newPassword())) {
+            throw new AppException(ErrorCode.AUTH_NEW_PASSWORD_SAME_AS_OLD);
+        }
+
+        // Update password
+        account.setPassword(passwordEncoder.encode(request.newPassword()));
+        accountRepository.save(account);
+
+        log.info("✅ Password successfully changed for account: {}", accountId);
     }
 }

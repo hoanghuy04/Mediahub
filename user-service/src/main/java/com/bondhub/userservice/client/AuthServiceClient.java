@@ -1,7 +1,8 @@
 package com.bondhub.userservice.client;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.userservice.dto.response.AccountResponse;
+import com.bondhub.userservice.dto.response.auth.DeviceSessionResponse;
+import com.bondhub.userservice.dto.response.user.AccountResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,4 +12,7 @@ public interface AuthServiceClient {
 
     @GetMapping("/auth/accounts/{id}")
     ApiResponse<AccountResponse> getAccountById(@PathVariable("id") String id);
+
+    @GetMapping("/auth/devices/session/{sessionId}")
+    ApiResponse<DeviceSessionResponse> getDeviceBySessionId(@PathVariable("sessionId") String sessionId);
 }
