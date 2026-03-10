@@ -15,6 +15,7 @@ import com.bondhub.userservice.dto.request.UserUpdateRequest;
 import com.bondhub.userservice.dto.request.UserIndexRequest;
 import com.bondhub.userservice.dto.request.AvatarUpdateRequest;
 import com.bondhub.userservice.dto.request.BackgroundUpdateRequest;
+import com.bondhub.userservice.dto.request.BioUpdateRequest;
 import com.bondhub.userservice.dto.response.AccountResponse;
 import com.bondhub.userservice.dto.response.UserResponse;
 import com.bondhub.userservice.dto.response.UserProfileResponse;
@@ -70,7 +71,19 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with id: {}", id);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(user.getAccountId());
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+                log.info("Account info fetched successfully for user: {}", id);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for user: {}. Account info will be null.", id, e);
+        }
+        
+        return getUserResponseWithUrl(user, accountResponse);
     }
 
     @Override
@@ -78,7 +91,19 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching user with accountId: {}", accountId);
         User user = userRepository.findByAccountId(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        return userMapper.toUserResponse(user);
+        
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(accountId);
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+                log.info("Account info fetched successfully for accountId: {}", accountId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for accountId: {}. Account info will be null.", accountId, e);
+        }
+        
+        return getUserResponseWithUrl(user, accountResponse);
     }
 
     @Override
@@ -175,6 +200,22 @@ public class UserServiceImpl implements UserService {
                 .build();
     }
 
+    private UserResponse getUserResponseWithUrl(User user, AccountResponse accountResponse) {
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+        
+        return UserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .dob(user.getDob())
+                .bio(user.getBio())
+                .gender(user.getGender())
+                .accountInfo(accountResponse)
+                .avatar(user.getAvatar() != null ? baseUrl + user.getAvatar() : null)
+                .background(user.getBackground() != null ? baseUrl + user.getBackground() : null)
+                .backgroundY(user.getBackgroundY())
+                .build();
+    }
+
     @Override
     public UserImageResponse updateAvatar(AvatarUpdateRequest request) {
         String accountId = securityUtil.getCurrentAccountId();
@@ -265,6 +306,34 @@ public class UserServiceImpl implements UserService {
         log.info("Background position updated successfully for user: {}", accountId);
         String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
         return userMapper.toBackgroundResponse(user, baseUrl);
+    }
+
+    @Override
+    public UserProfileResponse updateBio(BioUpdateRequest request) {
+        String accountId = securityUtil.getCurrentAccountId();
+        log.info("Updating bio for user: {}", accountId);
+
+        User user = userRepository.findByAccountId(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        user.setBio(request.bio());
+        user = userRepository.save(user);
+
+        AccountResponse accountResponse = null;
+        try {
+            ApiResponse<AccountResponse> accountApiResponse = authServiceClient.getAccountById(accountId);
+            if (accountApiResponse != null && accountApiResponse.data() != null) {
+                accountResponse = accountApiResponse.data();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch account info for user: {}", accountId, e);
+        }
+
+        log.info("Bio updated successfully for user: {}", accountId);
+
+        syncUserToIndex(user, accountResponse != null ? accountResponse.phoneNumber() : null, null);
+
+        return getUserProfileResponseWithUrl(user, accountResponse);
     }
 
     @Override
