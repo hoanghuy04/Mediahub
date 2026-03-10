@@ -147,20 +147,78 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     @Override
+    public void deleteDeviceById(String id, String accountId) {
+        log.info("Deleting device with id: {} for accountId: {}", id, accountId);
+
+        Device device = deviceRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Device not found with id: {}", id);
+                    return new AppException(ErrorCode.DEV_DEVICE_NOT_FOUND);
+                });
+
+        if (!accountId.equals(device.getAccountId())) {
+            log.warn("Account {} attempted to delete device {} owned by {}", accountId, id, device.getAccountId());
+            throw new AppException(ErrorCode.AUTH_UNAUTHORIZED);
+        }
+
+        if (isSessionActive(device.getSessionId())) {
+            log.warn("Cannot delete active device with id: {}", id);
+            throw new AppException(ErrorCode.INVALID_OPERATION);
+        }
+
+        deviceRepository.deleteById(id);
+        log.info("Device deleted successfully with id: {}", id);
+    }
+
+    @Override
     public DeviceListResponse getGroupedActiveDevicesWithSessions(String accountId, String currentSessionId) {
-        log.info("Fetching and grouping active devices with sessions for accountId: {}", accountId);
+        log.info("Fetching and grouping devices by session state for accountId: {}", accountId);
 
-        List<DeviceResponse> activeDevices = getActiveDevicesWithSessions(accountId, currentSessionId);
+        List<Device> devices = deviceRepository.findByAccountId(accountId);
+        log.info("Found {} devices for accountId: {}", devices.size(), accountId);
 
-        List<DeviceResponse> currentDevice = activeDevices.stream()
-                .filter(device -> Boolean.TRUE.equals(device.isCurrentDevice()))
-                .toList();
+        List<DeviceResponse> activeDevices = new ArrayList<>();
+        List<DeviceResponse> inactiveDevices = new ArrayList<>();
 
-        List<DeviceResponse> otherDevices = activeDevices.stream()
-                .filter(device -> !Boolean.TRUE.equals(device.isCurrentDevice()))
-                .toList();
+        for (Device device : devices) {
+            String sessionId = device.getSessionId();
+            Optional<RefreshTokenSession> sessionOpt = sessionId == null
+                    ? Optional.empty()
+                    : refreshTokenSessionRepository.findById(sessionId);
 
-        return new DeviceListResponse(currentDevice, otherDevices);
+            boolean isActive = sessionOpt.map(RefreshTokenSession::isValid).orElse(false);
+            boolean isCurrentDevice = isActive && sessionId.equals(currentSessionId);
+
+            DeviceResponse response = new DeviceResponse(
+                    device.getId(),
+                    device.getDeviceId(),
+                    device.getSessionId(),
+                    device.getDeviceName(),
+                    device.getBrowser(),
+                    device.getOs(),
+                    device.getDeviceType(),
+                    device.getIpAddress(),
+                    device.getLastActiveTime(),
+                    device.getAccountId(),
+                    device.getCreatedAt(),
+                    device.getLastModifiedAt(),
+                    device.getCreatedBy(),
+                    device.getLastModifiedBy(),
+                    sessionOpt.map(RefreshTokenSession::getIssuedAt).orElse(null),
+                    sessionOpt.map(RefreshTokenSession::getExpiresAt).orElse(null),
+                    isCurrentDevice,
+                    isActive);
+
+            if (isActive) {
+                activeDevices.add(response);
+            } else {
+                inactiveDevices.add(response);
+            }
+        }
+
+        // Keep response shape for compatibility:
+        // activeDevices => active devices, otherDevices => inactive devices.
+        return new DeviceListResponse(activeDevices, inactiveDevices);
     }
 
     private boolean isSessionActive(String sessionId) {
@@ -170,67 +228,6 @@ public class DeviceServiceImpl implements DeviceService {
         return refreshTokenSessionRepository.findById(sessionId)
                 .map(RefreshTokenSession::isValid)
                 .orElse(false);
-    }
-
-    public List<DeviceResponse> getActiveDevicesWithSessions(String accountId, String currentSessionId) {
-        log.info("Fetching active devices with sessions for accountId: {}", accountId);
-
-        // Get all devices for the account from MongoDB
-        List<Device> devices = deviceRepository.findByAccountId(accountId);
-        log.info("Found {} devices for accountId: {}", devices.size(), accountId);
-
-        List<DeviceResponse> activeDevices = new ArrayList<>();
-
-        for (Device device : devices) {
-            if (device.getSessionId() == null) {
-                log.debug("Device {} has no sessionId, skipping", device.getId());
-                continue;
-            }
-
-            // Check if there's an active session in Redis for this device
-            Optional<RefreshTokenSession> sessionOpt = refreshTokenSessionRepository.findById(device.getSessionId());
-
-            if (sessionOpt.isPresent()) {
-                RefreshTokenSession session = sessionOpt.get();
-
-                // Check if the session is still valid
-                if (session.isValid()) {
-                    boolean isCurrentDevice = device.getSessionId().equals(currentSessionId);
-
-                    // Use existing mapper and add session fields
-                    DeviceResponse response = new DeviceResponse(
-                            device.getId(),
-                            device.getDeviceId(),
-                            device.getSessionId(),
-                            device.getDeviceName(),
-                            device.getBrowser(),
-                            device.getOs(),
-                            device.getDeviceType(),
-                            device.getIpAddress(),
-                            device.getLastActiveTime(),
-                            device.getAccountId(),
-                            device.getCreatedAt(),
-                            device.getLastModifiedAt(),
-                            device.getCreatedBy(),
-                            device.getLastModifiedBy(),
-                            session.getIssuedAt(),
-                            session.getExpiresAt(),
-                            isCurrentDevice,
-                            true);
-
-                    activeDevices.add(response);
-                    log.debug("Device {} has active session, added to result", device.getId());
-                } else {
-                    log.debug("Device {} has expired or revoked session, skipping", device.getId());
-                }
-            } else {
-                log.debug("No session found in Redis for device {} with sessionId: {}",
-                        device.getId(), device.getSessionId());
-            }
-        }
-
-        log.info("Found {} devices with active sessions for accountId: {}", activeDevices.size(), accountId);
-        return activeDevices;
     }
 
 }

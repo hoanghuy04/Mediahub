@@ -79,4 +79,13 @@ public class DeviceController {
 
         return ResponseEntity.ok(ApiResponse.success(groupedResponse));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> deleteMyDevice(@PathVariable String id) {
+        log.info("REST request to delete device with id: {}", id);
+        String accountId = securityUtil.getCurrentAccountId();
+        deviceService.deleteDeviceById(id, accountId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

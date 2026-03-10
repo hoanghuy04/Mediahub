@@ -99,13 +99,29 @@ public interface DeviceService {
     DeviceResponse saveOrUpdateDevice(DeviceCreateRequest request);
 
     /**
-     * Retrieves all active devices with active sessions for a given account and
-     * groups them into
-     * current device and other devices.
+     * Deletes a device by id for a specific account.
+     *
+     * @param id        the device id to delete
+     * @param accountId the authenticated account id
+     * @throws AppException if device is not found, does not belong to account, or
+     *                      is currently active
+     */
+    void deleteDeviceById(String id, String accountId);
+
+    /**
+     * Retrieves all devices for an account and groups them by session state.
+     *
+     * <p>
+     * For backward compatibility, the response fields are kept as:
+     * <ul>
+     * <li>{@code activeDevices}: active devices</li>
+     * <li>{@code otherDevices}: inactive devices</li>
+     * </ul>
+     * </p>
      *
      * @param accountId        the account ID to search for, must not be null
      * @param currentSessionId the current session ID to mark the current device
-     * @return a grouped list of active devices
+     * @return a grouped list of active and inactive devices
      */
     DeviceListResponse getGroupedActiveDevicesWithSessions(String accountId, String currentSessionId);
 }
