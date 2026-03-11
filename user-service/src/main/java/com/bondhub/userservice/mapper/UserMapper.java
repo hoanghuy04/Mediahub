@@ -6,7 +6,6 @@ import com.bondhub.userservice.dto.request.UserUpdateRequest;
 import com.bondhub.userservice.dto.response.UserResponse;
 import com.bondhub.userservice.dto.response.UserImageResponse;
 import com.bondhub.userservice.model.User;
-import com.bondhub.userservice.model.elasticsearch.UserIndex;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -19,7 +18,7 @@ public interface UserMapper {
 
     UserSummaryResponse toUserSummaryResponse(User user);
 
-    UserSummaryResponse toUserSummaryResponse(UserIndex userIndex);
+//    UserSummaryResponse toUserSummaryResponse(UserIndex userIndex);
 
     @Mapping(target = "url", expression = "java(baseUrl + user.getAvatar())")
     @Mapping(target = "y", ignore = true)
@@ -29,7 +28,7 @@ public interface UserMapper {
     @Mapping(target = "y", source = "user.backgroundY")
     UserImageResponse toBackgroundResponse(User user, String baseUrl);
 
-    UserIndex toUserIndex(User user);
+//    UserIndex toUserIndex(User user);
 
     void updateUserFromRequest(@MappingTarget User user, UserUpdateRequest request);
 }

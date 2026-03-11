@@ -5,6 +5,15 @@ spring:
   application:
     name: search-service
 
+  messages:
+    basename: i18n/messages, i18n/messages-search
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI_SEARCH}
+      auto-index-creation: true
+      uuid-representation: standard
+
   # Kafka Consumer configuration for search indexing events
   kafka:
     consumer:

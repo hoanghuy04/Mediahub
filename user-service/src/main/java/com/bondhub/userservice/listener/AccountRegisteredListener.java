@@ -7,6 +7,7 @@ import com.bondhub.common.publisher.OutboxEventPublisher;
 import com.bondhub.common.event.user.UserCreatedEvent;
 import com.bondhub.userservice.dto.request.UserCreateRequest;
 import com.bondhub.userservice.dto.response.UserResponse;
+import com.bondhub.userservice.dto.request.elasticsearch.UserIndexRequest;
 import com.bondhub.userservice.publisher.UserIndexEventPublisher;
 import com.bondhub.userservice.service.user.UserService;
 import lombok.RequiredArgsConstructor;
@@ -46,10 +47,12 @@ public class AccountRegisteredListener {
                 topic, partition, offset, event.getAccountId());
 
         try {
-            // Create user with fullName and accountId
+            // Create user with fullName, accountId, phoneNumber and role
             UserCreateRequest request = UserCreateRequest.builder()
                     .accountId(event.getAccountId())
                     .fullName(event.getFullName())
+                    .phoneNumber(event.getPhoneNumber())
+                    .role("USER")
                     .build();
 
             UserResponse userResponse = userService.createUser(request);

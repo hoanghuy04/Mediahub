@@ -16,9 +16,7 @@ import com.bondhub.userservice.dto.request.elasticsearch.UserIndexRequest;
 import com.bondhub.userservice.dto.request.AvatarUpdateRequest;
 import com.bondhub.userservice.dto.request.BackgroundUpdateRequest;
 import com.bondhub.userservice.dto.response.AccountResponse;
-import com.bondhub.userservice.dto.response.UserResponse;
-import com.bondhub.userservice.dto.response.UserProfileResponse;
-import com.bondhub.userservice.dto.response.UserImageResponse;
+import com.bondhub.userservice.dto.response.*;
 import com.bondhub.userservice.mapper.UserMapper;
 import com.bondhub.userservice.mapper.UserProfileMapper;
 import com.bondhub.userservice.model.User;
@@ -32,11 +30,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @RequiredArgsConstructor
+@Transactional
 public class UserServiceImpl implements UserService {
     final UserRepository userRepository;
     final UserMapper userMapper;
@@ -59,9 +61,26 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("User created successfully with id: {}", user.getId());
 
-        publishUserIndexEvent(user, null);
+        publishUserIndexEvent(user, request.phoneNumber(), request.role());
 
         return userMapper.toUserResponse(user);
+    }
+
+    private void publishUserIndexEvent(User user, String phoneNumber, String role) {
+        userIndexEventPublisher.publishIndexRequest(UserIndexRequest.builder()
+                .userId(user.getId())
+                .accountId(user.getAccountId())
+                .fullName(user.getFullName())
+                .avatar(user.getAvatar())
+                .phoneNumber(phoneNumber)
+                .role(role != null ? Role.valueOf(role) : null)
+                .build());
+    }
+
+    private void publishUserIndexEvent(User user, AccountResponse accountResponse) {
+        publishUserIndexEvent(user, 
+                accountResponse != null ? accountResponse.phoneNumber() : null,
+                accountResponse != null ? accountResponse.role() : null);
     }
 
     @Override
@@ -80,22 +99,6 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserResponse(user);
     }
 
-    @Override
-    public UserSummaryResponse getUserSummaryByAccountId(String accountId) {
-        log.info("Fetching user summary with accountId: {}", accountId);
-        User user = userRepository.findByAccountId(accountId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        UserSummaryResponse response = userMapper.toUserSummaryResponse(user);
-        if (response.avatar() != null) {
-            return UserSummaryResponse.builder()
-                    .id(response.id())
-                    .fullName(response.fullName())
-                    .avatar(S3Util.getS3BaseUrl(bucketName, region) + response.avatar())
-                    .build();
-        }
-        return response;
-    }
 
     @Override
     public UserProfileResponse getMyUserWithAccountInfo() {
@@ -279,7 +282,6 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(id);
         log.info("User deleted successfully with id: {}", id);
 
-        // Delete from Elasticsearch
         try {
             userIndexEventPublisher.publishDeleteRequest(id);
         } catch (Exception e) {
@@ -287,14 +289,4 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    private void publishUserIndexEvent(User user, AccountResponse accountResponse) {
-        userIndexEventPublisher.publishIndexRequest(UserIndexRequest.builder()
-                .userId(user.getId())
-                .accountId(user.getAccountId())
-                .fullName(user.getFullName())
-                .avatar(user.getAvatar())
-                .phoneNumber(accountResponse != null ? accountResponse.phoneNumber() : null)
-                .role(accountResponse != null ? Role.valueOf(accountResponse.role()) : null)
-                .build());
-    }
 }

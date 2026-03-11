@@ -11,6 +11,7 @@ public class ElasticsearchProperties {
 
     private SyncConfig sync = new SyncConfig();
     private IndexConfig index = new IndexConfig();
+    private String userAlias = "users";
     private MonitoringConfig monitoring = new MonitoringConfig();
 
     @Data
@@ -24,6 +25,7 @@ public class ElasticsearchProperties {
     public static class IndexConfig {
         private int realtimeThreads = 2;
         private int asyncTimeoutSeconds = 30;
+        private int retainIndexCount = 3;
     }
 
     @Data
