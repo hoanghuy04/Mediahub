@@ -8,7 +8,7 @@ import lombok.Builder;
 public record IndexDetailResponse(
         String indexName,
         LocalDateTime createdAt,
-        long documentCount,
-        String storeSize,
+        long docCount,
+        String primaryStoreSize,
         IndexStatus status
 ) {}

@@ -87,6 +87,13 @@ public class UserSyncServiceImpl implements UserSyncService {
 
             updateTaskStatus(taskId, ReindexTaskStatus.RUNNING, ReindexStep.SWITCHING_ALIAS, totalDocs, totalDocs);
             List<String> oldIndexes = switchAlias(newIndex);
+            
+            try {
+                esOps.indexOps(IndexCoordinates.of(esProperties.getUserAlias())).refresh();
+                log.info("Refreshed index alias '{}' after reindex", esProperties.getUserAlias());
+            } catch (Exception e) {
+                log.warn("Failed to refresh index after switch: {}", e.getMessage());
+            }
 
             updateTaskStatus(taskId, ReindexTaskStatus.RUNNING, ReindexStep.CLEANING_UP, totalDocs, totalDocs);
             deleteOldIndexes(oldIndexes, newIndex);

@@ -7,5 +7,5 @@ public record ElasticsearchSummaryResponse(
         ElasticsearchHealthResponse health,
         IndexStatsResponse stats,
         DataComparisonResponse compare,
-        long deadEventsCount
+        long failedEventsCount
 ) {}

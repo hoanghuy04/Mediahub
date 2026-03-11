@@ -7,6 +7,7 @@ import com.bondhub.searchservice.service.UserSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,12 +20,12 @@ public class UserSearchController {
     private final UserSearchService userSearchService;
 
     @GetMapping("/users")
-    public ApiResponse<PageResponse<List<UserSummaryResponse>>> searchUsers(
+    public ResponseEntity<ApiResponse<PageResponse<List<UserSummaryResponse>>>> searchUsers(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
-        return ApiResponse.success(userSearchService.searchUsers(keyword, pageable));
+        return ResponseEntity.ok(ApiResponse.success(userSearchService.searchUsers(keyword, pageable)));
     }
 }

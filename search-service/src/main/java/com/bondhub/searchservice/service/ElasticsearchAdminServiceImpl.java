@@ -47,7 +47,7 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
     UserServiceClient userServiceClient;
     LocalizationUtil localizationUtil;
     ReindexTaskTracker reindexTaskTracker;
-    UserDeadEventService userDeadEventService;
+    FailedEventService failedEventService;
 
     private static final String USERS_ALIAS = "users";
 
@@ -57,7 +57,7 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
                 .health(getHealth())
                 .stats(getIndexStats())
                 .compare(compareWithDatabase())
-                .deadEventsCount(userDeadEventService.countDeadEvents())
+                .failedEventsCount(failedEventService.countEventsByResolved(false))
                 .build();
     }
 
@@ -278,8 +278,8 @@ public class ElasticsearchAdminServiceImpl implements ElasticsearchAdminService 
         try {
             String pattern = USERS_ALIAS + "*";
 
-            GetAliasResponse aliasResponse = esClient.indices().getAlias(g -> g.index(pattern));
-            List<String> indexNames = new ArrayList<>(aliasResponse.result().keySet());
+            var indicesResponse = esClient.indices().get(g -> g.index(pattern));
+            List<String> indexNames = new ArrayList<>(indicesResponse.result().keySet());
 
             if (indexNames.isEmpty()) return List.of();
 

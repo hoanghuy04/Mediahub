@@ -59,8 +59,11 @@ public enum ErrorCode {
         EL_INDEX_NOT_FOUND(HttpStatus.NOT_FOUND, 2301, "error.el.index.not.found"),
         EL_CLUSTER_UNHEALTHY(HttpStatus.INTERNAL_SERVER_ERROR, 2302, "error.el.cluster.unhealthy"),
         EL_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, 2303, "error.el.document.not.found"),
-        EL_REINDEX_IN_PROGRESS(HttpStatus.CONFLICT, 2304, "error.el.reindex.in.progress")
+        EL_REINDEX_IN_PROGRESS(HttpStatus.CONFLICT, 2304, "error.el.reindex.in.progress"),
 
+        // DLQ errors (24xx)
+        DLQ_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, 2401, "error.dlq.event.not.found"),
+        DLQ_RETRY_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 2402, "error.dlq.retry.failed")
         ;
 
         private final HttpStatus httpStatus;

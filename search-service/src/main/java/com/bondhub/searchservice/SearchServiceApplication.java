@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @SpringBootApplication(scanBasePackages = {"com.bondhub.searchservice", "com.bondhub.common"})
 @EnableFeignClients
-@EnableMongoRepositories(basePackages = "com.bondhub.common.repository")
+@EnableMongoRepositories(basePackages = {"com.bondhub.common.repository", "com.bondhub.searchservice.repository"})
 public class SearchServiceApplication {
 
     public static void main(String[] args) {
