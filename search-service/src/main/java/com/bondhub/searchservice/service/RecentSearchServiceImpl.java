@@ -55,7 +55,8 @@ public class RecentSearchServiceImpl implements RecentSearchService {
         if (currentHistory != null) {
             currentHistory.stream()
                     .map(obj -> (RecentSearch) obj)
-                    .filter(oldItem -> oldItem.getId().equals(newItem.getId()))
+                    .filter(oldItem -> oldItem.getId().equals(newItem.getId())
+                            || (request.type() == SearchType.KEYWORD && oldItem.getName().equalsIgnoreCase(newItem.getName())))
                     .forEach(oldItem -> redisTemplate.opsForZSet().remove(key, oldItem));
         }
 
