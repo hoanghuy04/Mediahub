@@ -3,6 +3,9 @@ package com.bondhub.authservice.service.auth;
 import com.bondhub.authservice.client.UserServiceClient;
 import com.bondhub.authservice.config.MailTemplate;
 import com.bondhub.authservice.dto.auth.request.*;
+import com.bondhub.common.enums.NotificationType;
+import com.bondhub.common.event.notification.RawNotificationEvent;
+import com.bondhub.common.publisher.RawNotificationEventPublisher;
 import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
 import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
@@ -40,7 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -62,6 +67,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     TokenProvider tokenProvider;
     OutboxEventPublisher outboxEventPublisher;
     DeviceService deviceService;
+    RawNotificationEventPublisher rawNotificationEventPublisher;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -309,7 +315,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             var response = userServiceClient.createUser(createRequest);
             if (response != null && response.data() != null) {
-                log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), response.data().id());
+                String userId = response.data().id();
+                log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), userId);
+
             }
         } catch (Exception e) {
             log.error("❌ Failed to create user profile via API for accountId: {}", account.getId(), e);

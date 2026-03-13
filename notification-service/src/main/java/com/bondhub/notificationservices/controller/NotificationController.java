@@ -23,8 +23,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class NotificationController {
-
+    
     NotificationService notificationService;
+
+    @PostMapping("/test-fcm")
+    public ResponseEntity<ApiResponse<Void>> testFcm() {
+        notificationService.sendTestNotification();
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 
     @PostMapping("/friend-request")
     public ResponseEntity<ApiResponse<NotificationAcceptedResponse>> createFriendRequest(

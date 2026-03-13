@@ -2,6 +2,7 @@ package com.bondhub.notificationservices.service.notification;
 
 import com.bondhub.common.utils.LocalizationUtil;
 import com.bondhub.common.utils.SecurityUtil;
+import com.bondhub.notificationservices.client.UserServiceClient;
 import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.*;
 import com.bondhub.notificationservices.dto.response.notificationtemplate.NotificationTemplateResponse;
@@ -15,6 +16,7 @@ import com.bondhub.notificationservices.publisher.RawNotificationPublisher;
 import com.bondhub.notificationservices.repository.UserNotificationStateRepository;
 import com.bondhub.notificationservices.service.notification.assembler.NotificationAssemblerResolver;
 import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
+import com.bondhub.notificationservices.service.preference.UserPreferenceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -50,6 +52,8 @@ public class NotificationServiceImpl implements NotificationService {
     LocalizationUtil localizationUtil;
     NotificationTemplateService templateService;
     UserNotificationStateRepository userStateRepository;
+    UserServiceClient userServiceClient;
+    UserPreferenceService userPreferenceService;
 
     @Override
     public NotificationAcceptedResponse createFriendRequestNotification(
@@ -204,6 +208,53 @@ public class NotificationServiceImpl implements NotificationService {
                 .set("readAt", LocalDateTime.now());
 
         mongoTemplate.updateMulti(query, update, Notification.class);
+    }
+
+    @Override
+    public void sendTestNotification() {
+        String userId = securityUtil.getCurrentUserId();
+        log.info("[FCM] Triggering test notification for userId: {}", userId);
+
+        String locale = userPreferenceService.getLocale(userId);
+        String actorName = "BondHub Tester";
+        String actorAvatar = "";
+
+        try {
+            var response = userServiceClient.getUserSummaryByUserId(userId);
+            if (response.getBody() != null && response.getBody().data() != null) {
+                actorName = response.getBody().data().fullName();
+                actorAvatar = response.getBody().data().avatar();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch user profile for test notification, using defaults");
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("actorName", actorName);
+        payload.put("actorAvatar", actorAvatar != null ? actorAvatar : "");
+        payload.put("timestamp", LocalDateTime.now().toString());
+        
+        // Cung cấp các bản dịch khác nhau trong payload
+        payload.put("message_en", "This is a test notification with AVATAR!");
+        payload.put("message_vi", "Đây là thông báo test có AVATAR!");
+        
+        // Giữ lại field message mặc định để tương thích với các template cũ
+        payload.put("message", "en".equalsIgnoreCase(locale) 
+                ? "This is a test notification with AVATAR!" 
+                : "Đây là thông báo test có AVATAR!");
+
+        RawNotificationEvent event = RawNotificationEvent.builder()
+                .recipientId(userId)
+                .actorId(userId)
+                .actorName(actorName)
+                .actorAvatar(actorAvatar)
+                .type(NotificationType.SYSTEM)
+                .referenceId(userId)
+                .payload(payload)
+                .occurredAt(LocalDateTime.now())
+                .build();
+
+        rawPublisher.publish(event);
     }
 
     private NotificationResponse convertToResponse(

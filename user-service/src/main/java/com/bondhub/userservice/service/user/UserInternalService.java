@@ -15,4 +15,5 @@ public interface UserInternalService {
 
     boolean existsById(String userId);
 
+    UserSummaryResponse getUserSummaryByUserId(String userId);
 }

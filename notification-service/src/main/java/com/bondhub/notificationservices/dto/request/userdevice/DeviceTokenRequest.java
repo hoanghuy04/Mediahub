@@ -9,5 +9,9 @@ public record DeviceTokenRequest(
     String token,
 
     @NotNull(message = "validation.device.platform.required")
-    Platform platform
+    Platform platform,
+
+    String deviceId,
+
+    String locale
 ) {}

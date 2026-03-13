@@ -91,6 +91,7 @@ public class InAppDeliveryHandler {
         payloadMap.put("actorAvatar", event.getLastActorAvatar());
         payloadMap.put("actorCount", actorCount);
         payloadMap.put("othersCount", othersCount);
+        payloadMap.put("totalEventCount", event.getTotalEventCount()); // ← Thêm dòng này
         payloadMap.put("showSecondActor", actorCount == 2);
 
         if (actorCount == 2) {

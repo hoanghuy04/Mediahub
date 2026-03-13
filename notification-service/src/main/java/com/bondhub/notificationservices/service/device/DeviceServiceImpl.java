@@ -28,23 +28,62 @@ public class DeviceServiceImpl implements DeviceService {
     @Transactional
     public void registerDevice(DeviceTokenRequest request) {
         String userId = securityUtil.getCurrentUserId();
-        log.info("Registering device for user: {}, platform: {}", userId, request.platform());
+        String token = request.token();
+        Platform platform = request.platform();
+        String deviceId = request.deviceId();
+        String locale = request.locale() != null ? request.locale() : "vi";
 
-        userDeviceRepository.deleteByFcmTokenAndUserIdNot(request.token(), userId);
+        log.info("[FCM] Registering device: user={}, platform={}, deviceId={}, locale={}, token={}", 
+                userId, platform, deviceId, locale, token.substring(0, Math.min(token.length(), 10)));
 
-        if (request.platform() == Platform.WEB) {
-            userDeviceRepository.deleteByUserIdAndPlatformIn(userId, List.of(Platform.WEB));
-        } else {
-            userDeviceRepository.deleteByUserIdAndPlatformIn(userId, List.of(Platform.ANDROID, Platform.IOS));
+        try {
+            userDeviceRepository.deleteByFcmTokenAndUserIdNot(token, userId);
+
+            List<UserDevice> existingDevices = userDeviceRepository.findByUserId(userId);
+            UserDevice existing = existingDevices.stream()
+                    .filter(d -> d.getFcmToken().equals(token))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existing == null) {
+                if (platform == Platform.WEB) {
+                    userDeviceRepository.deleteByUserIdAndPlatformIn(userId, List.of(Platform.WEB));
+                }
+
+                UserDevice newDevice = UserDevice.builder()
+                        .userId(userId)
+                        .fcmToken(token)
+                        .platform(platform)
+                        .deviceId(deviceId)
+                        .locale(locale)
+                        .build();
+                userDeviceRepository.save(newDevice);
+                log.info("[FCM] New device saved for user: {}", userId);
+            } else {
+                boolean updated = false;
+                if (deviceId != null && !deviceId.equals(existing.getDeviceId())) {
+                    log.info("[FCM] Updating deviceId for user {}: old={}, new={}", userId, existing.getDeviceId(), deviceId);
+                    existing.setDeviceId(deviceId);
+                    updated = true;
+                }
+                if (!locale.equals(existing.getLocale())) {
+                    log.info("[FCM] Updating locale for user {}: old={}, new={} (deviceId={})", 
+                            userId, existing.getLocale(), locale, deviceId);
+                    existing.setLocale(locale);
+                    updated = true;
+                }
+
+                if (updated) {
+                    userDeviceRepository.save(existing);
+                    log.info("[FCM] Updated device info for user: {}", userId);
+                } else {
+                    log.info("[FCM] Device already registered with same locale ({}) for user: {}, skipping save", locale, userId);
+                }
+            }
+        } catch (Exception e) {
+            log.error("[FCM] Error registering device: {}", e.getMessage());
+            throw e;
         }
-
-        UserDevice specificDevice = UserDevice.builder()
-                .userId(userId)
-                .fcmToken(request.token())
-                .platform(request.platform())
-                .build();
-        userDeviceRepository.save(specificDevice);
-        log.info("Device registered successfully for user: {} on platform: {}", userId, request.platform());
     }
 
     @Override

@@ -84,6 +84,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                 .type(last.getType())
                 .actorIds(actorIds)
                 .actorCount(actorCount)
+                .totalEventCount(events.size()) 
                 .referenceId(last.getReferenceId())
                 .lastActorId(last.getActorId())
                 .lastActorName(last.getActorName() != null ? last.getActorName() : last.getActorId())

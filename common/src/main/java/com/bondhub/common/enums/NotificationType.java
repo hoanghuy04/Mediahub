@@ -18,5 +18,7 @@ public enum NotificationType {
     POST_MENTION,
     COMMENT_MENTION,
 
-    SYSTEM
+    SYSTEM,
+
+    DLQ_ALERT
 }

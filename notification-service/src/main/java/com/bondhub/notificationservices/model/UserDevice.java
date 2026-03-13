@@ -31,5 +31,9 @@ public class UserDevice extends BaseModel {
 
     String fcmToken;
 
+    String deviceId;
+
+    String locale;
+
     Platform platform;
 }

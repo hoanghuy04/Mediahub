@@ -106,11 +106,32 @@ public class DataInitializer {
 
         // --- SHARED SYSTEM TEMPLATES ---
         seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.IN_APP, "vi",
-                "Hệ thống",
-                "Tài khoản của bạn đã được bảo mật thành công");
+                "Thông báo hệ thống",
+                "{{message}}");
         seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.IN_APP, "en",
-                "System",
-                "Your account has been secured successfully");
+                "System Notification",
+                "{{message}}");
+
+        seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.FCM, "vi",
+                "Thông báo mới",
+                "{{message}}");
+        seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.FCM, "en",
+                "New Notification",
+                "{{message}}");
+
+        seedIfAbsent(NotificationType.DLQ_ALERT, NotificationChannel.IN_APP, "vi",
+                "Cảnh báo hệ thống",
+                "Phát hiện <b>{{totalEventCount}}</b> lỗi xử lý mới tại topic <b>{{referenceId}}</b>. Tổng số lỗi chưa xử lý: <b>{{unresolvedCount}}</b>");
+        seedIfAbsent(NotificationType.DLQ_ALERT, NotificationChannel.IN_APP, "en",
+                "System Alert",
+                "Detected <b>{{totalEventCount}}</b> new processing errors in topic <b>{{referenceId}}</b>. Total unresolved: <b>{{unresolvedCount}}</b>");
+
+        seedIfAbsent(NotificationType.DLQ_ALERT, NotificationChannel.FCM, "vi",
+                "Cảnh báo hệ thống",
+                "Có {{totalEventCount}} lỗi mới tại {{referenceId}}. Tổng: {{unresolvedCount}}");
+        seedIfAbsent(NotificationType.DLQ_ALERT, NotificationChannel.FCM, "en",
+                "System Alert",
+                "{{totalEventCount}} new errors in {{referenceId}}. Total: {{unresolvedCount}}");
     }
 
     private static final List<String> NAMES = List.of(

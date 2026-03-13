@@ -20,6 +20,7 @@ public class BatchedNotificationEvent {
 
     List<String> actorIds;
     int actorCount;
+    int totalEventCount;
     String referenceId;
     String lastActorId;
     String lastActorName;

@@ -13,6 +13,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import lombok.experimental.NonFinal;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 
@@ -38,13 +40,17 @@ public class FcmDeliveryHandler {
     PresenceService presenceService;
     UserPreferenceService userPreferenceService;
 
+    @NonFinal
+    @Value("${bondhub.frontend-url}")
+    String frontendUrl;
+
     public void push(Notification persisted) {
         String recipientId = persisted.getUserId();
 
-        if (presenceService.isOnline(recipientId)) {
-            log.debug("FCM skip: user is online, recipientId={}", recipientId);
-            return;
-        }
+//        if (presenceService.isOnline(recipientId)) {
+//            log.debug("FCM skip: user is online, recipientId={}", recipientId);
+//            return;
+//        }
 
         List<UserDevice> devices = userDeviceRepository.findByUserId(recipientId);
         if (devices.isEmpty()) {
@@ -62,33 +68,58 @@ public class FcmDeliveryHandler {
         String lastActorAvatar = getStr(persisted, "actorAvatar");
         String requestId = getStr(persisted, "requestId");
 
-        Map<String, Object> renderData = new HashMap<>(persisted.getPayload() != null ? persisted.getPayload() : Collections.emptyMap());
-        renderData.put("actorCount", actorCount);
-        renderData.put("othersCount", actorCount > 2 ? actorCount - 1 : 0);
-        renderData.put("showSecondActor", actorCount == 2);
-        renderData.put("actorName", lastActorName != null ? lastActorName : "");
-        renderData.put("actorAvatar", lastActorAvatar != null ? lastActorAvatar : "");
+        Map<String, Object> baseRenderData = new HashMap<>(persisted.getPayload() != null ? persisted.getPayload() : Collections.emptyMap());
+        baseRenderData.put("actorCount", actorCount);
+        baseRenderData.put("othersCount", actorCount > 2 ? actorCount - 1 : 0);
+        baseRenderData.put("showSecondActor", actorCount == 2);
+        baseRenderData.put("actorName", lastActorName != null ? lastActorName : "");
+        baseRenderData.put("actorAvatar", lastActorAvatar != null ? lastActorAvatar : "");
 
         if (actorCount == 2) {
             String secondActorName = getStr(persisted, "secondActorName");
-            renderData.put("secondActorName", secondActorName != null ? secondActorName : "một người khác");
-        }
-
-        var template = templateService.getTemplate(persisted.getType(), NotificationChannel.FCM, locale);
-        String title = templateService.render(template.titleTemplate(), renderData);
-        String body = templateService.render(template.bodyTemplate(), renderData);
-
-        log.info("FCM processing: type={}, recipientId={}, locale={}, title='{}', body='{}'",
-                persisted.getType(), recipientId, locale, title, body);
-
-        if ("".equals(title) && "".equals(body)) {
-            log.warn("FCM skip: both title and body are empty for type={}", persisted.getType());
-            return;
+            baseRenderData.put("secondActorName", secondActorName != null ? secondActorName : "một người khác");
         }
 
         String collapseKey = persisted.getType().name() + "_" + recipientId;
 
         for (UserDevice device : devices) {
+            String deviceLocale = device.getLocale();
+            
+            if (deviceLocale == null) {
+                var userPrefs = userPreferenceService.getInternalPreferences(recipientId);
+                String globalLocale = userPrefs != null ? userPrefs.getLanguage() : "vi";
+                Map<String, String> deviceLocales = userPrefs != null && userPrefs.getLanguageByDeviceId() != null 
+                        ? userPrefs.getLanguageByDeviceId() 
+                        : Map.of();
+                deviceLocale = deviceLocales.getOrDefault(device.getDeviceId(), globalLocale);
+            }
+            
+            if (deviceLocale == null) deviceLocale = "vi";
+
+            // Tạo bản copy renderData cho từng thiết bị để xử lý đa ngôn ngữ
+            Map<String, Object> deviceRenderData = new HashMap<>(baseRenderData);
+            
+            // Nếu payload có chứa bản dịch riêng cho locale của thiết bị này, hãy ưu tiên sử dụng
+            String localeKey = deviceLocale.toLowerCase();
+            if (deviceRenderData.containsKey("message_" + localeKey)) {
+                deviceRenderData.put("message", deviceRenderData.get("message_" + localeKey));
+            }
+            if (deviceRenderData.containsKey("title_" + localeKey)) {
+                deviceRenderData.put("title", deviceRenderData.get("title_" + localeKey));
+            }
+
+            var template = templateService.getTemplate(persisted.getType(), NotificationChannel.FCM, deviceLocale);
+            String title = templateService.render(template.titleTemplate(), deviceRenderData);
+            String body = templateService.render(template.bodyTemplate(), deviceRenderData);
+
+            log.info("FCM processing: type={}, recipientId={}, deviceId={}, locale={}, title='{}', body='{}'",
+                    persisted.getType(), recipientId, device.getDeviceId(), deviceLocale, title, body);
+
+            if ("".equals(title) && "".equals(body)) {
+                log.warn("FCM skip: both title and body are empty for device={}, type={}", device.getId(), persisted.getType());
+                continue;
+            }
+
             sendToDevice(device, title, body, collapseKey,
                     recipientId, lastActorId, lastActorName, lastActorAvatar,
                     actorCount, othersCount, persisted.getType().name(), requestId);
@@ -110,35 +141,38 @@ public class FcmDeliveryHandler {
 
         String categoryIdentifier = "FRIEND_REQUEST".equals(type) ? "friend_request" : "";
 
+        String url = frontendUrl;
+        if (!url.endsWith("/")) url += "/";
+
         Message.Builder messageBuilder = Message.builder()
                 .setToken(device.getFcmToken())
-                .putAllData(Map.of(
-                        "type", type,
-                        "title", title != null ? title : "",
-                        "body", body != null ? body : "",
-                        "actorId", lastActorId != null ? lastActorId : "",
-                        "actorName", lastActorName != null ? lastActorName : "",
-                        "actorAvatar", lastActorAvatar != null ? lastActorAvatar : "",
-                        "actorCount", String.valueOf(actorCount),
-                        "othersCount", String.valueOf(othersCount),
-                        "categoryIdentifier", categoryIdentifier,
-                        "requestId", requestId != null ? requestId : ""
+                .putAllData(Map.ofEntries(
+                        Map.entry("type", type),
+                        Map.entry("title", title != null ? title : ""),
+                        Map.entry("body", body != null ? body : ""),
+                        Map.entry("actorId", lastActorId != null ? lastActorId : ""),
+                        Map.entry("actorName", lastActorName != null ? lastActorName : ""),
+                        Map.entry("actorAvatar", lastActorAvatar != null ? lastActorAvatar : ""),
+                        Map.entry("actorCount", String.valueOf(actorCount)),
+                        Map.entry("othersCount", String.valueOf(othersCount)),
+                        Map.entry("categoryIdentifier", categoryIdentifier),
+                        Map.entry("requestId", requestId != null ? requestId : ""),
+                        Map.entry("url", url)
                 ));
 
         if (device.getPlatform() == Platform.WEB) {
-            messageBuilder.setNotification(com.google.firebase.messaging.Notification.builder()
+            String iconUrl = lastActorAvatar != null && !lastActorAvatar.isEmpty() ? lastActorAvatar : "/images/logo.jpg";
+            log.info("[FCM] Sending data-only message to WEB with icon: {}", iconUrl);
+            
+            messageBuilder.setWebpushConfig(WebpushConfig.builder()
+                    .setFcmOptions(WebpushFcmOptions.withLink(url))
+                    .build());
+        }
+
+        if (device.getPlatform() == Platform.ANDROID || device.getPlatform() == Platform.IOS) {
+             messageBuilder.setNotification(com.google.firebase.messaging.Notification.builder()
                     .setTitle(title)
                     .setBody(body)
-                    .build());
-
-            messageBuilder.setWebpushConfig(WebpushConfig.builder()
-                    .setNotification(WebpushNotification.builder()
-                            .setTitle(title)
-                            .setBody(body)
-                            .setIcon(lastActorAvatar != null ? lastActorAvatar : "/images/logo.png")
-                            .setTag(collapseKey)
-                            .build())
-                    .setFcmOptions(WebpushFcmOptions.withLink("http://localhost:5173/notifications"))
                     .build());
         }
 

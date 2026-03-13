@@ -9,7 +9,6 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -87,16 +86,13 @@ public class UserIndexRequestedListener {
         String errorMessage = errorMsgBytes != null ? new String(errorMsgBytes) : "Unknown error";
         String stackTrace = stackTraceBytes != null ? new String(stackTraceBytes) : "No stacktrace available";
         
-        // Final topic info to save
         String finalTopic = (originalTopic != null) ? originalTopic : dlqTopic;
         int finalPartition = (originalPartition != null) ? originalPartition : dlqPartition;
         long finalOffset = (originalOffset != null) ? originalOffset : dlqOffset;
         
-        // Parse attempts
         int retryCount = 0;
         if (attemptsBytes != null) {
             try {
-                // Kafka headers for attempts are usually stored as 4-byte integers
                 retryCount = java.nio.ByteBuffer.wrap(attemptsBytes).getInt();
             } catch (Exception ignored) {}
         }

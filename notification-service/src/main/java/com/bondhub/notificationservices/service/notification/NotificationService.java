@@ -27,4 +27,6 @@ public interface NotificationService {
 
     void markAllAsRead();
 
+    void sendTestNotification();
+
 }

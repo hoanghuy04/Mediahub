@@ -1,6 +1,7 @@
 package com.bondhub.notificationservices.pipeline;
 
 import com.bondhub.common.event.notification.RawNotificationEvent;
+import com.bondhub.notificationservices.service.preference.UserPreferenceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -13,9 +14,15 @@ import org.springframework.stereotype.Component;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserPreferenceCheckerStep implements PipelineStep {
 
-    // TODO: Call Feign Client to user-service to get user notification setting
+    UserPreferenceService userPreferenceService;
+
     @Override
     public boolean process(RawNotificationEvent event) {
-        return true;
+        boolean isAllowed = userPreferenceService.allow(event.getRecipientId(), event.getType());
+        if (!isAllowed) {
+            log.info("[Pipeline] Notification skipped due to user preference: recipientId={}, type={}", 
+                    event.getRecipientId(), event.getType());
+        }
+        return isAllowed;
     }
 }
