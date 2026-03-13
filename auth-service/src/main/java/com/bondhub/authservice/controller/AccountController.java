@@ -40,6 +40,13 @@ public class AccountController {
         return ResponseEntity.ok(ApiResponse.success(accountResponse));
     }
 
+    @PostMapping("/batch")
+    public ResponseEntity<ApiResponse<List<AccountResponse>>> getAccountsByIds(@RequestBody List<String> ids) {
+        log.info("REST request to get accounts by batch ids: {} accounts", ids.size());
+        List<AccountResponse> accountResponses = accountService.getAccountsByIds(ids);
+        return ResponseEntity.ok(ApiResponse.success(accountResponses));
+    }
+
     @GetMapping("/email/{email}")
     public ResponseEntity<ApiResponse<AccountResponse>> getAccountByEmail(@PathVariable String email) {
         log.info("REST request to get account by email: {}", email);
@@ -74,6 +81,22 @@ public class AccountController {
     public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable String id) {
         log.info("REST request to delete account with id: {}", id);
         accountService.deleteAccount(id);
+        return ResponseEntity.ok(ApiResponse.successWithoutData());
+    }
+
+    @PostMapping("/internal/{id}/ban")
+    public ResponseEntity<ApiResponse<Void>> banAccount(
+            @PathVariable String id,
+            @RequestParam String reason) {
+        log.info("[Internal] REST request to ban account id={}", id);
+        accountService.banAccount(id, reason);
+        return ResponseEntity.ok(ApiResponse.successWithoutData());
+    }
+
+    @PostMapping("/internal/{id}/unban")
+    public ResponseEntity<ApiResponse<Void>> unbanAccount(@PathVariable String id) {
+        log.info("[Internal] REST request to unban account id={}", id);
+        accountService.unbanAccount(id);
         return ResponseEntity.ok(ApiResponse.successWithoutData());
     }
 

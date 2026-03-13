@@ -12,8 +12,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.FieldType;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.util.Map;
-
 /**
  * Entity representing user activity log entries
  */
@@ -41,5 +39,5 @@ public class UserActivityLog extends BaseModel {
     String description;
     String ipAddress;
     String userAgent;
-    Map<String, Object> metadata;
+    ActivityLogMetadata metadata;
 }

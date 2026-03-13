@@ -4,6 +4,7 @@ import com.bondhub.authservice.dto.account.request.AccountCreateRequest;
 import com.bondhub.authservice.dto.account.response.AccountResponse;
 import com.bondhub.authservice.dto.account.request.AccountUpdateRequest;
 import com.bondhub.common.dto.ApiResponse;
+import com.bondhub.common.exception.AppException;
 
 import java.util.List;
 
@@ -42,6 +43,15 @@ public interface AccountService {
      * @throws AppException if account not found (ACC_ACCOUNT_NOT_FOUND)
      */
     AccountResponse getAccountById(String id);
+
+    /**
+     * Retrieves multiple accounts by their IDs.
+     * Used for batch operations to optimize performance.
+     *
+     * @param ids list of account IDs to fetch
+     * @return list of account response DTOs, empty list if none found
+     */
+    List<AccountResponse> getAccountsByIds(List<String> ids);
 
     /**
      * Retrieves an account by email address.
@@ -107,5 +117,23 @@ public interface AccountService {
      * @return true if account exists, false otherwise
      */
     boolean existsByPhoneNumber(String phoneNumber);
+
+    /**
+     * Bans an account by disabling it.
+     *
+     * @param id     the account id
+     * @param reason the ban reason
+     */
+    void banAccount(String id, String reason);
+
+    /**
+     * Unbans an account by re-enabling it.
+     *
+     * @param id the account id
+     */
+    void unbanAccount(String id);
+
+
+
 }
 
