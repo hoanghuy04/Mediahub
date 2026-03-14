@@ -44,6 +44,21 @@ public class UserInternalController {
         return ResponseEntity.ok(ApiResponse.success(userInternalService.getUsersBatch(lastId, size)));
     }
 
+    @PostMapping("/{accountId}/last-login")
+    public ResponseEntity<ApiResponse<Void>> recordLastLogin(@PathVariable String accountId) {
+        userInternalService.recordLastLogin(accountId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/account/{accountId}/ban-status")
+    public ResponseEntity<ApiResponse<Void>> syncBanStatus(
+            @PathVariable String accountId,
+            @RequestParam boolean banned) {
+        userInternalService.syncBanStatus(accountId, banned);
+        return ResponseEntity.ok(ApiResponse.success(null));
+
+    }
+
     @GetMapping("/exists/{userId}")
     public ResponseEntity<ApiResponse<Boolean>> existsById(@PathVariable String userId) {
         return ResponseEntity.ok(ApiResponse.success(userInternalService.existsById(userId)));

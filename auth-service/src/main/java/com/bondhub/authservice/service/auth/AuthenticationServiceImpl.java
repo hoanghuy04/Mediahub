@@ -3,9 +3,6 @@ package com.bondhub.authservice.service.auth;
 import com.bondhub.authservice.client.UserServiceClient;
 import com.bondhub.authservice.config.MailTemplate;
 import com.bondhub.authservice.dto.auth.request.*;
-import com.bondhub.common.enums.NotificationType;
-import com.bondhub.common.event.notification.RawNotificationEvent;
-import com.bondhub.common.publisher.RawNotificationEventPublisher;
 import com.bondhub.authservice.dto.auth.response.ForgotPasswordResponse;
 import com.bondhub.authservice.dto.auth.response.RegisterInitResponse;
 import com.bondhub.authservice.dto.auth.response.TokenResponse;
@@ -43,9 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +62,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     TokenProvider tokenProvider;
     OutboxEventPublisher outboxEventPublisher;
     DeviceService deviceService;
-    RawNotificationEventPublisher rawNotificationEventPublisher;
 
     @Override
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
@@ -83,7 +77,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
 
         if (!account.getEnabled()) {
-            throw new AppException(ErrorCode.AUTH_UNAUTHENTICATED);
+            throw new AppException(ErrorCode.AUTH_ACCOUNT_BANNED);
         }
 
         String userId = null;
@@ -95,6 +89,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             }
         } catch (Exception e) {
             log.error("Failed to fetch user profile via API for accountId: {}", account.getId(), e);
+        }
+
+        // Record last login timestamp (non-blocking, best-effort)
+        try {
+            userServiceClient.recordLastLogin(account.getId());
+        } catch (Exception e) {
+            log.warn("Failed to record last login for accountId={}: {}", account.getId(), e.getMessage());
         }
 
         return tokenProvider.generateFullTokenResponse(
@@ -157,7 +158,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .orElseThrow(() -> new AppException(ErrorCode.ACC_ACCOUNT_NOT_FOUND));
 
         if (!account.getEnabled()) {
-            throw new AppException(ErrorCode.AUTH_UNAUTHENTICATED);
+            throw new AppException(ErrorCode.AUTH_ACCOUNT_BANNED);
         }
 
         tokenStoreService.revokeRefreshSession(sessionId);
@@ -315,9 +316,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
             var response = userServiceClient.createUser(createRequest);
             if (response != null && response.data() != null) {
-                String userId = response.data().id();
-                log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), userId);
-
+                log.info("✅ User profile created via API for accountId: {}, userId: {}", account.getId(), response.data().id());
             }
         } catch (Exception e) {
             log.error("❌ Failed to create user profile via API for accountId: {}", account.getId(), e);

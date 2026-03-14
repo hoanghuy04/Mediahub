@@ -3,6 +3,7 @@ package com.bondhub.notificationservices.model;
 import com.bondhub.common.model.BaseModel;
 import com.bondhub.common.enums.NotificationType;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -28,7 +29,7 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
+@SuperBuilder
 public class Notification extends BaseModel {
 
     @MongoId(FieldType.OBJECT_ID)

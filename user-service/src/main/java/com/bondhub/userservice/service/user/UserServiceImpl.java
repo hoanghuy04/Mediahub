@@ -2,6 +2,7 @@ package com.bondhub.userservice.service.user;
 
 import com.bondhub.common.dto.ApiResponse;
 import com.bondhub.common.dto.client.fileservice.FileUploadResponse;
+import com.bondhub.common.dto.client.userservice.user.response.UserSummaryResponse;
 import com.bondhub.common.enums.Role;
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
@@ -10,19 +11,19 @@ import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.client.FileServiceClient;
 import com.bondhub.userservice.dto.request.BioUpdateRequest;
+import com.bondhub.userservice.dto.request.elasticsearch.UserIndexRequest;
 import com.bondhub.userservice.dto.request.user.UserCreateRequest;
 import com.bondhub.userservice.dto.request.user.UserUpdateRequest;
 import com.bondhub.userservice.dto.request.user.AvatarUpdateRequest;
 import com.bondhub.userservice.dto.request.user.BackgroundUpdateRequest;
 import com.bondhub.userservice.dto.response.user.AccountResponse;
-import com.bondhub.userservice.dto.response.user.UserResponse;
-import com.bondhub.userservice.dto.response.user.UserProfileResponse;
 import com.bondhub.userservice.dto.response.user.UserImageResponse;
+import com.bondhub.userservice.dto.response.user.UserProfileResponse;
+import com.bondhub.userservice.dto.response.user.UserResponse;
 import com.bondhub.userservice.mapper.UserMapper;
 import com.bondhub.userservice.mapper.UserProfileMapper;
 import com.bondhub.userservice.model.User;
 import com.bondhub.userservice.publisher.UserIndexEventPublisher;
-import com.bondhub.userservice.dto.request.elasticsearch.UserIndexRequest;
 import com.bondhub.userservice.repository.UserRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +33,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -149,8 +152,23 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserResponse> getAllUsers() {
         log.info("Fetching all users");
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+
         return userRepository.findAll().stream()
-                .map(userMapper::toUserResponse)
+                .map(user -> {
+                    UserResponse response = userMapper.toUserResponse(user);
+                    return UserResponse.builder()
+                            .id(response.id())
+                            .fullName(response.fullName())
+                            .dob(response.dob())
+                            .bio(response.bio())
+                            .gender(response.gender())
+                            .accountInfo(response.accountInfo())
+                            .avatar(response.avatar() != null ? baseUrl + response.avatar() : null)
+                            .background(response.background() != null ? baseUrl + response.background() : null)
+                            .backgroundY(response.backgroundY())
+                            .build();
+                })
                 .toList();
     }
 
@@ -352,5 +370,25 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             log.error("Failed to delete user from Elasticsearch index: {}", id, e);
         }
+    }
+
+    @Override
+    public Map<String, UserSummaryResponse> getUsersByIds(List<String> userIds) {
+        log.info("Fetching batch users: {}", userIds);
+        if (userIds == null || userIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        List<User> users = userRepository.findAllById(userIds);
+        String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
+
+        return users.stream().collect(Collectors.toMap(
+                User::getId,
+                user -> UserSummaryResponse.builder()
+                        .id(user.getId())
+                        .fullName(user.getFullName())
+                        .avatar(user.getAvatar() != null ? baseUrl + user.getAvatar() : null)
+                        .build()
+        ));
     }
 }
