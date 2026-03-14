@@ -4,6 +4,7 @@ import com.bondhub.common.config.kafka.KafkaTopicProperties;
 import com.bondhub.common.event.account.AccountRegisteredEvent;
 import com.bondhub.common.event.user.UserIndexDeletedEvent;
 import com.bondhub.common.event.user.UserIndexRequestedEvent;
+import com.bondhub.common.event.user.UserProfileUpdatedEvent;
 import com.bondhub.common.model.kafka.EventType;
 import com.bondhub.common.model.kafka.OutboxEvent;
 import com.bondhub.common.repository.OutboxEventRepository;
@@ -138,7 +139,8 @@ public class OutboxEventPublisher {
         return switch (eventType) {
             case ACCOUNT_REGISTERED, ACCOUNT_UPDATED, ACCOUNT_DELETED, 
                  ACCOUNT_VERIFIED, ACCOUNT_ENABLED, ACCOUNT_DISABLED -> AccountRegisteredEvent.class;
-            case USER_CREATED, USER_UPDATED, USER_DELETED -> UserCreatedEvent.class;
+            case USER_CREATED, USER_DELETED -> UserCreatedEvent.class;
+            case USER_UPDATED -> UserProfileUpdatedEvent.class;
             case USER_INDEX_REQUESTED ->  UserIndexRequestedEvent.class;
             case USER_INDEX_DELETED -> UserIndexDeletedEvent.class;
         };

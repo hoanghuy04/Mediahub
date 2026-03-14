@@ -8,6 +8,9 @@ import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
 import com.bondhub.common.utils.S3Util;
 import com.bondhub.common.utils.SecurityUtil;
+import com.bondhub.common.event.user.UserProfileUpdatedEvent;
+import com.bondhub.common.model.kafka.EventType;
+import com.bondhub.common.publisher.OutboxEventPublisher;
 import com.bondhub.userservice.client.AuthServiceClient;
 import com.bondhub.userservice.client.FileServiceClient;
 import com.bondhub.userservice.dto.request.BioUpdateRequest;
@@ -53,6 +56,7 @@ public class UserServiceImpl implements UserService {
     final UserProfileMapper userProfileMapper;
     final FileServiceClient fileServiceClient;
     final UserIndexEventPublisher userIndexEventPublisher;
+    final OutboxEventPublisher outboxEventPublisher;
 
     @Value("${aws.s3.bucket.name}")
     String bucketName;
@@ -61,6 +65,7 @@ public class UserServiceImpl implements UserService {
     String region;
 
     @Override
+    @Transactional
     public UserResponse createUser(UserCreateRequest request) {
         log.info("Creating user with accountId: {}", request.accountId());
         User user = userMapper.toUser(request);
@@ -68,6 +73,7 @@ public class UserServiceImpl implements UserService {
         log.info("User created successfully with id: {}", user.getId());
 
         publishUserIndexEvent(user, request.phoneNumber(), request.role());
+        publishUserProfileUpdatedEvent(user);
 
         return userMapper.toUserResponse(user);
     }
@@ -175,6 +181,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserProfileResponse updateUser(UserUpdateRequest request) {
         String accountId = securityUtil.getCurrentAccountId();
         log.info("Updating user profile for account: {}", accountId);
@@ -198,6 +205,7 @@ public class UserServiceImpl implements UserService {
         log.info("User profile updated successfully for account: {}", accountId);
 
         publishUserIndexEvent(user, accountResponse);
+        publishUserProfileUpdatedEvent(user);
 
         return getUserProfileResponseWithUrl(user, accountResponse);
     }
@@ -238,6 +246,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserImageResponse updateAvatar(AvatarUpdateRequest request) {
         String accountId = securityUtil.getCurrentAccountId();
         log.info("Updating avatar for user: {}", accountId);
@@ -266,6 +275,7 @@ public class UserServiceImpl implements UserService {
             log.info("Avatar updated successfully for user: {}", accountId);
 
             publishUserIndexEvent(user, null);
+            publishUserProfileUpdatedEvent(user);
 
             String baseUrl = S3Util.getS3BaseUrl(bucketName, region);
             return userMapper.toAvatarResponse(user, baseUrl);
@@ -333,6 +343,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserProfileResponse updateBio(BioUpdateRequest request) {
         String accountId = securityUtil.getCurrentAccountId();
         log.info("Updating bio for user: {}", accountId);
@@ -355,7 +366,21 @@ public class UserServiceImpl implements UserService {
 
         log.info("Bio updated successfully for user: {}", accountId);
 
+        publishUserProfileUpdatedEvent(user);
+
         return getUserProfileResponseWithUrl(user, accountResponse);
+    }
+
+    private void publishUserProfileUpdatedEvent(User user) {
+        UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .avatar(user.getAvatar())
+                .timestamp(System.currentTimeMillis())
+                .build();
+
+        outboxEventPublisher.saveAndPublish(user.getId(), "User", EventType.USER_UPDATED, event);
+        log.info("Published USER_UPDATED event via outbox for user: {}", user.getId());
     }
 
     @Override
