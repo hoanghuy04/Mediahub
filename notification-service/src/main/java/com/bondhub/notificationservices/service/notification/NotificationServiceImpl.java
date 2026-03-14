@@ -5,7 +5,7 @@ import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.notificationservices.client.UserServiceClient;
 import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.*;
-import com.bondhub.notificationservices.dto.response.notificationtemplate.NotificationTemplateResponse;
+import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.common.enums.NotificationType;
 import com.bondhub.common.event.notification.RawNotificationEvent;
@@ -14,9 +14,8 @@ import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.model.UserNotificationState;
 import com.bondhub.notificationservices.publisher.RawNotificationPublisher;
 import com.bondhub.notificationservices.repository.UserNotificationStateRepository;
-import com.bondhub.notificationservices.service.notification.assembler.NotificationAssemblerResolver;
-import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
-import com.bondhub.notificationservices.service.preference.UserPreferenceService;
+import com.bondhub.notificationservices.service.template.NotificationTemplateService;
+import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -44,7 +43,6 @@ public class NotificationServiceImpl implements NotificationService {
 
     static final Duration FRESH_WINDOW = Duration.ofHours(2);
 
-    NotificationAssemblerResolver assemblerResolver;
     RawNotificationPublisher rawPublisher;
     MongoTemplate mongoTemplate;
     NotificationMapper notificationMapper;
@@ -54,12 +52,6 @@ public class NotificationServiceImpl implements NotificationService {
     UserNotificationStateRepository userStateRepository;
     UserServiceClient userServiceClient;
     UserPreferenceService userPreferenceService;
-
-    @Override
-    public NotificationAcceptedResponse createFriendRequestNotification(
-            CreateFriendRequestNotificationRequest request) {
-        return enqueue(NotificationType.FRIEND_REQUEST, request);
-    }
 
     @Override
     public NotificationHistoryResponse getNotificationHistory(LocalDateTime cursor, int limit) {
@@ -215,7 +207,8 @@ public class NotificationServiceImpl implements NotificationService {
         String userId = securityUtil.getCurrentUserId();
         log.info("[FCM] Triggering test notification for userId: {}", userId);
 
-        String locale = userPreferenceService.getLocale(userId);
+        var prefs = userPreferenceService.getPreferences(userId);
+        String locale = prefs != null ? prefs.getLanguage() : "vi";
         String actorName = "BondHub Tester";
         String actorAvatar = "";
 
@@ -275,10 +268,4 @@ public class NotificationServiceImpl implements NotificationService {
         return notificationMapper.toResponse(n, title, body);
     }
 
-    private NotificationAcceptedResponse enqueue(NotificationType type, Object request) {
-        RawNotificationEvent event = assemblerResolver.get(type).build(request);
-        log.info("[API] Enqueueing notification: type={}, recipient={}", type, event.getRecipientId());
-        rawPublisher.publish(event);
-        return NotificationAcceptedResponse.queued();
-    }
 }

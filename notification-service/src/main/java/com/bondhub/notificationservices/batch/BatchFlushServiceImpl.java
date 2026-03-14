@@ -3,7 +3,7 @@ package com.bondhub.notificationservices.batch;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.common.event.notification.RawNotificationEvent;
 import com.bondhub.notificationservices.publisher.ReadyNotificationPublisher;
-import com.bondhub.notificationservices.service.preference.UserPreferenceService;
+import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -96,7 +96,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                 .batchedAt(LocalDateTime.now())
                 .build();
 
-        readyPublisher.publish(batched);   // → Queue 2 → ReadyNotificationConsumer → FCM
+        readyPublisher.publish(batched);
         log.info("Batch flushed → Queue2: key={}, actors={}", batchKey, actorCount);
     }
 

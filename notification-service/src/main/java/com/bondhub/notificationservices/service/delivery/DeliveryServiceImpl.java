@@ -2,13 +2,16 @@ package com.bondhub.notificationservices.service.delivery;
 
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.notificationservices.model.Notification;
-import com.bondhub.notificationservices.service.delivery.handler.FcmDeliveryHandler;
-import com.bondhub.notificationservices.service.delivery.handler.InAppDeliveryHandler;
+import com.bondhub.notificationservices.service.delivery.strategy.NotificationStrategy;
+import com.bondhub.notificationservices.service.persistence.NotificationPersistenceService;
+import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -16,27 +19,34 @@ import org.springframework.stereotype.Service;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DeliveryServiceImpl implements DeliveryService {
 
-    InAppDeliveryHandler inAppHandler;
-    FcmDeliveryHandler fcmHandler;
+    NotificationPersistenceService persistenceService;
+    UserPreferenceService userPreferenceService;
+    List<NotificationStrategy> strategies;
 
     @Override
     public void deliver(BatchedNotificationEvent event) {
-        log.info("Delivering: type={}, recipientId={}, batchActors={}",
-                event.getType(), event.getRecipientId(), event.getActorCount());
+        log.info("Processing delivery: type={}, recipientId={}", event.getType(), event.getRecipientId());
 
-        Notification persisted = inAppHandler.persistAndReturn(event);
+        Notification persisted = persistenceService.persist(event);
+        
         if (persisted == null) {
-            log.warn("Persist returned null — skipping FCM: type={}, recipientId={}",
-                    event.getType(), event.getRecipientId());
+            log.warn("Persistence failed - skipping strategies: recipientId={}", event.getRecipientId());
             return;
         }
 
-        // TODO: if user is online, push via WebSocket for real-time in-app display instead of FCM
-        try {
-            fcmHandler.push(persisted);
-        } catch (Exception e) {
-            log.error("FCM push failed: recipientId={}, type={}, error={}",
-                    event.getRecipientId(), event.getType(), e.getMessage(), e);
+        var prefs = userPreferenceService.getPreferences(event.getRecipientId());
+        if (!userPreferenceService.allow(prefs, null, event.getType())) {
+            log.info("Notification filtered out by user preference: recipientId={}, type={}", 
+                    event.getRecipientId(), event.getType());
+            return;
+        }
+
+        for (NotificationStrategy strategy : strategies) {
+            try {
+                strategy.execute(persisted);
+            } catch (Exception e) {
+                log.error("Strategy {} failed: {}", strategy.getClass().getSimpleName(), e.getMessage(), e);
+            }
         }
     }
 }

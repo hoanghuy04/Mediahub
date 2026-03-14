@@ -13,7 +13,19 @@ import java.util.Map;
 @AllArgsConstructor
 public class UserNotificationPreferenceResponse {
     private String userId;
-    private boolean allowNotifications;
+    private boolean allowNotifications; 
     private String language;
     private Map<String, String> languageByDeviceId;
+    private Map<String, DevicePreference> devicePreferences;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DevicePreference {
+        private boolean allowNotifications;
+        private boolean notifMessages;
+        private boolean notifGroups;
+        private boolean notifFriendRequests;
+    }
 }

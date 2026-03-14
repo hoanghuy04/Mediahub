@@ -1,4 +1,4 @@
-package com.bondhub.notificationservices.dto.request.notificationtemplate;
+package com.bondhub.notificationservices.dto.request.template;
 
 public record UpdateTemplateRequest(
 

@@ -33,11 +33,26 @@ public class UserSettingInternalServiceImpl implements UserSettingInternalServic
                 ))
                 : Map.of();
 
+        Map<String, UserNotificationPreferenceResponse.DevicePreference> devicePreferences = 
+                userSetting.getNotificationSettings().getNotificationSettingsByDeviceId() != null
+                ? userSetting.getNotificationSettings().getNotificationSettingsByDeviceId().entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> UserNotificationPreferenceResponse.DevicePreference.builder()
+                                .allowNotifications(e.getValue().isAllowNotifications())
+                                .notifMessages(e.getValue().isNotifMessages())
+                                .notifGroups(e.getValue().isNotifGroups())
+                                .notifFriendRequests(e.getValue().isNotifFriendRequests())
+                                .build()
+                ))
+                : Map.of();
+
         return UserNotificationPreferenceResponse.builder()
                 .userId(userId)
                 .allowNotifications(userSetting.getNotificationSettings().isAllowNotifications())
                 .language(userSetting.getLanguageAndInterface().getLanguage().name().toLowerCase())
                 .languageByDeviceId(deviceLocales)
+                .devicePreferences(devicePreferences)
                 .build();
     }
 }

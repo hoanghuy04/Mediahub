@@ -1,8 +1,8 @@
 package com.bondhub.notificationservices.controller;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.notificationservices.dto.request.userdevice.DeviceTokenRequest;
-import com.bondhub.notificationservices.service.device.DeviceService;
+import com.bondhub.notificationservices.dto.request.user.device.DeviceTokenRequest;
+import com.bondhub.notificationservices.service.user.device.DeviceService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

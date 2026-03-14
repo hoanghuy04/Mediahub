@@ -1,4 +1,4 @@
-package com.bondhub.notificationservices.dto.response.notificationtemplate;
+package com.bondhub.notificationservices.dto.response.template;
 
 import com.bondhub.common.enums.NotificationType;
 

@@ -1,4 +1,4 @@
-package com.bondhub.notificationservices.dto.request.userdevice;
+package com.bondhub.notificationservices.dto.request.user.device;
 
 import com.bondhub.notificationservices.enums.Platform;
 import jakarta.validation.constraints.NotBlank;

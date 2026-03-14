@@ -1,7 +1,7 @@
-package com.bondhub.notificationservices.service.device;
+package com.bondhub.notificationservices.service.user.device;
 
 import com.bondhub.common.utils.SecurityUtil;
-import com.bondhub.notificationservices.dto.request.userdevice.DeviceTokenRequest;
+import com.bondhub.notificationservices.dto.request.user.device.DeviceTokenRequest;
 import com.bondhub.notificationservices.model.UserDevice;
 import com.bondhub.notificationservices.repository.UserDeviceRepository;
 import lombok.AccessLevel;

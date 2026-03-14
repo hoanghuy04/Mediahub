@@ -1,13 +1,11 @@
 package com.bondhub.notificationservices.listener;
 
-import com.bondhub.notificationservices.config.NotificationKafkaTopicConfig;
+import com.bondhub.notificationservices.client.UserServiceClient;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
 import com.bondhub.common.event.notification.RawNotificationEvent;
-import com.bondhub.notificationservices.pipeline.NotificationBatcherStep;
-import com.bondhub.notificationservices.pipeline.UserPreferenceCheckerStep;
-import com.bondhub.notificationservices.pipeline.UserValidatorStep;
+import com.bondhub.notificationservices.batch.BatcherService;
 import com.bondhub.notificationservices.publisher.ReadyNotificationPublisher;
-import com.bondhub.notificationservices.service.preference.UserPreferenceService;
+import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -34,12 +32,11 @@ import java.util.Map;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RawNotificationListener {
 
-    NotificationKafkaTopicConfig topicConfig;
-    UserValidatorStep userValidatorStep;
-    NotificationBatcherStep notificationBatcherStep;
-    UserPreferenceCheckerStep userPreferenceCheckerStep;
+    UserServiceClient userServiceClient;
+    BatcherService batcherService;
     ReadyNotificationPublisher readyPublisher;
     UserPreferenceService userPreferenceService;
+
     ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -56,48 +53,53 @@ public class RawNotificationListener {
             @Header(KafkaHeaders.OFFSET) long offset,
             Acknowledgment acknowledgment) {
 
-        log.info("[Pipeline] Received: topic={}, partition={}, offset={}", topic, partition, offset);
+        log.info("[RawListener] Received event: topic={}, partition={}, offset={}", topic, partition, offset);
 
-        RawNotificationEvent event;
-        try {
-            event = objectMapper.readValue(message, RawNotificationEvent.class);
-        } catch (Exception e) {
-            log.error("[Pipeline] Deserialize failed, skipping: {}", message, e);
-            if (acknowledgment != null) acknowledgment.acknowledge();
+        RawNotificationEvent event = deserialize(message);
+        if (event == null) {
+            ack(acknowledgment);
             return;
         }
 
         try {
-            if (!userValidatorStep.process(event)) {
-                log.debug("[Pipeline] Dropped by validator: recipient={}", event.getRecipientId());
-                if (acknowledgment != null) acknowledgment.acknowledge();
+            var prefs = userPreferenceService.getPreferences(event.getRecipientId());
+            if (prefs == null) {
+                log.warn("[RawListener] Drop event: recipient {} not found or inactive", event.getRecipientId());
+                ack(acknowledgment);
                 return;
             }
 
-            if (!notificationBatcherStep.process(event)) {
-                log.debug("[Pipeline] Buffered for batching: type={}, recipient={}", event.getType(), event.getRecipientId());
-                if (acknowledgment != null) acknowledgment.acknowledge();
+            if (tryBatching(event)) {
+                ack(acknowledgment);
                 return;
             }
 
-            if (!userPreferenceCheckerStep.process(event)) {
-                log.debug("[Pipeline] Dropped by preference: recipient={}", event.getRecipientId());
-                if (acknowledgment != null) acknowledgment.acknowledge();
-                return;
-            }
-
-            readyPublisher.publish(toImmediate(event));
-            log.info("[Pipeline] Forwarded to Queue2: type={}, recipient={}", event.getType(), event.getRecipientId());
-            if (acknowledgment != null) acknowledgment.acknowledge();
+            dispatchToReadyQueue(event, prefs.getLanguage());
+            ack(acknowledgment);
 
         } catch (Exception e) {
-            log.error("[Pipeline] Processing failed: type={}, recipient={}", event.getType(), event.getRecipientId(), e);
-            throw new RuntimeException("Pipeline processing failed", e);
+            log.error("[RawListener] Critical error processing event: {}", event.getRecipientId(), e);
+            throw new RuntimeException("RawListener processing failed", e);
         }
     }
 
-    private BatchedNotificationEvent toImmediate(RawNotificationEvent event) {
-        String locale = userPreferenceService.getLocale(event.getRecipientId());
+    private boolean tryBatching(RawNotificationEvent event) {
+        boolean buffered = batcherService.buffer(event);
+        if (buffered) {
+            log.debug("[RawListener] Event buffered for batching: type={}, recipient={}", 
+                    event.getType(), event.getRecipientId());
+        }
+        return buffered;
+    }
+
+    private void dispatchToReadyQueue(RawNotificationEvent event, String locale) {
+        BatchedNotificationEvent readyEvent = wrapAsReady(event, locale);
+        readyPublisher.publish(readyEvent);
+        log.info("[RawListener] Forwarded directly to Ready Queue: type={}, recipient={}", 
+                event.getType(), event.getRecipientId());
+    }
+
+    private BatchedNotificationEvent wrapAsReady(RawNotificationEvent event, String locale) {
 
         Map<String, Object> payload = new HashMap<>(
                 event.getPayload() != null ? event.getPayload() : Collections.emptyMap()
@@ -111,6 +113,7 @@ public class RawNotificationListener {
                 .type(event.getType())
                 .actorIds(List.of(event.getActorId()))
                 .actorCount(1)
+                .totalEventCount(1)
                 .referenceId(event.getReferenceId())
                 .lastActorId(event.getActorId())
                 .lastActorName(event.getActorName())
@@ -118,7 +121,21 @@ public class RawNotificationListener {
                 .othersCount(0)
                 .locale(locale)
                 .rawPayloads(List.of(payload))
+                .lastOccurredAt(event.getOccurredAt())
                 .batchedAt(LocalDateTime.now())
                 .build();
+    }
+
+    private RawNotificationEvent deserialize(String json) {
+        try {
+            return objectMapper.readValue(json, RawNotificationEvent.class);
+        } catch (Exception e) {
+            log.error("[RawListener] Json mapping failed: {}", json, e);
+            return null;
+        }
+    }
+
+    private void ack(Acknowledgment ack) {
+        if (ack != null) ack.acknowledge();
     }
 }

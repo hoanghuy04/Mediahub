@@ -1,13 +1,15 @@
-package com.bondhub.notificationservices.service.delivery.handler;
+package com.bondhub.notificationservices.service.delivery.strategy;
 
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.notificationservices.enums.Platform;
 import com.bondhub.notificationservices.model.Notification;
 import com.bondhub.notificationservices.model.UserDevice;
 import com.bondhub.notificationservices.repository.UserDeviceRepository;
-import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
-import com.bondhub.notificationservices.service.preference.UserPreferenceService;
+import com.bondhub.notificationservices.service.template.NotificationTemplateService;
+import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
+import com.bondhub.notificationservices.service.delivery.strategy.NotificationStrategy;
 import com.bondhub.notificationservices.service.presence.PresenceService;
+import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.google.firebase.messaging.*;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,7 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class FcmDeliveryHandler {
+public class FcmDeliveryStrategy implements NotificationStrategy {
 
     static final RetryTemplate FCM_RETRY = RetryTemplate.builder()
             .maxAttempts(3)
@@ -44,13 +46,9 @@ public class FcmDeliveryHandler {
     @Value("${bondhub.frontend-url}")
     String frontendUrl;
 
-    public void push(Notification persisted) {
+    @Override
+    public void execute(Notification persisted) {
         String recipientId = persisted.getUserId();
-
-//        if (presenceService.isOnline(recipientId)) {
-//            log.debug("FCM skip: user is online, recipientId={}", recipientId);
-//            return;
-//        }
 
         List<UserDevice> devices = userDeviceRepository.findByUserId(recipientId);
         if (devices.isEmpty()) {
@@ -58,7 +56,8 @@ public class FcmDeliveryHandler {
             return;
         }
 
-        String locale = userPreferenceService.getLocale(recipientId);
+        var userPrefs = userPreferenceService.getPreferences(recipientId);
+        String globalLocale = (userPrefs != null) ? userPrefs.getLanguage() : "vi";
 
         int actorCount = persisted.getActorIds() != null ? persisted.getActorIds().size() : 0;
         int othersCount = Math.max(0, actorCount - 1);
@@ -82,12 +81,12 @@ public class FcmDeliveryHandler {
 
         String collapseKey = persisted.getType().name() + "_" + recipientId;
 
+        Map<String, NotificationTemplateResponse> templateCache = new HashMap<>();
+
         for (UserDevice device : devices) {
             String deviceLocale = device.getLocale();
             
             if (deviceLocale == null) {
-                var userPrefs = userPreferenceService.getInternalPreferences(recipientId);
-                String globalLocale = userPrefs != null ? userPrefs.getLanguage() : "vi";
                 Map<String, String> deviceLocales = userPrefs != null && userPrefs.getLanguageByDeviceId() != null 
                         ? userPrefs.getLanguageByDeviceId() 
                         : Map.of();
@@ -95,11 +94,14 @@ public class FcmDeliveryHandler {
             }
             
             if (deviceLocale == null) deviceLocale = "vi";
+            
+            if (!userPreferenceService.allow(userPrefs, device.getDeviceId(), persisted.getType())) {
+                log.debug("FCM skip: filtered by device preference: recipient={}, device={}", recipientId, device.getDeviceId());
+                continue;
+            }
 
-            // Tạo bản copy renderData cho từng thiết bị để xử lý đa ngôn ngữ
             Map<String, Object> deviceRenderData = new HashMap<>(baseRenderData);
             
-            // Nếu payload có chứa bản dịch riêng cho locale của thiết bị này, hãy ưu tiên sử dụng
             String localeKey = deviceLocale.toLowerCase();
             if (deviceRenderData.containsKey("message_" + localeKey)) {
                 deviceRenderData.put("message", deviceRenderData.get("message_" + localeKey));
@@ -108,7 +110,9 @@ public class FcmDeliveryHandler {
                 deviceRenderData.put("title", deviceRenderData.get("title_" + localeKey));
             }
 
-            var template = templateService.getTemplate(persisted.getType(), NotificationChannel.FCM, deviceLocale);
+            var template = templateCache.computeIfAbsent(deviceLocale, loc -> 
+                templateService.getTemplate(persisted.getType(), NotificationChannel.FCM, loc));
+
             String title = templateService.render(template.titleTemplate(), deviceRenderData);
             String body = templateService.render(template.bodyTemplate(), deviceRenderData);
 

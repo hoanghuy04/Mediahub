@@ -1,7 +1,6 @@
 package com.bondhub.notificationservices.controller;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.NotificationAcceptedResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationFlatHistoryResponse;
 import com.bondhub.notificationservices.dto.response.notification.NotificationHistoryResponse;
@@ -30,13 +29,6 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<Void>> testFcm() {
         notificationService.sendTestNotification();
         return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
-    @PostMapping("/friend-request")
-    public ResponseEntity<ApiResponse<NotificationAcceptedResponse>> createFriendRequest(
-            @Valid @RequestBody CreateFriendRequestNotificationRequest request) {
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(ApiResponse.success(notificationService.createFriendRequestNotification(request)));
     }
 
     @GetMapping("/history")

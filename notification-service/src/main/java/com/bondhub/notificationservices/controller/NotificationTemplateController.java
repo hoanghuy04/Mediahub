@@ -1,12 +1,12 @@
 package com.bondhub.notificationservices.controller;
 
 import com.bondhub.common.dto.ApiResponse;
-import com.bondhub.notificationservices.dto.request.notificationtemplate.CreateTemplateRequest;
-import com.bondhub.notificationservices.dto.request.notificationtemplate.UpdateTemplateRequest;
-import com.bondhub.notificationservices.dto.response.notificationtemplate.NotificationTemplateResponse;
+import com.bondhub.notificationservices.dto.request.template.CreateTemplateRequest;
+import com.bondhub.notificationservices.dto.request.template.UpdateTemplateRequest;
+import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.common.enums.NotificationType;
-import com.bondhub.notificationservices.service.notificationtemplate.NotificationTemplateService;
+import com.bondhub.notificationservices.service.template.NotificationTemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

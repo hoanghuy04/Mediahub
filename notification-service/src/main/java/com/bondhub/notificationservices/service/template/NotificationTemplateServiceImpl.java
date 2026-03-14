@@ -1,10 +1,10 @@
-package com.bondhub.notificationservices.service.notificationtemplate;
+package com.bondhub.notificationservices.service.template;
 
 import com.bondhub.common.exception.AppException;
 import com.bondhub.common.exception.ErrorCode;
-import com.bondhub.notificationservices.dto.request.notificationtemplate.CreateTemplateRequest;
-import com.bondhub.notificationservices.dto.request.notificationtemplate.UpdateTemplateRequest;
-import com.bondhub.notificationservices.dto.response.notificationtemplate.NotificationTemplateResponse;
+import com.bondhub.notificationservices.dto.request.template.CreateTemplateRequest;
+import com.bondhub.notificationservices.dto.request.template.UpdateTemplateRequest;
+import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
 import com.bondhub.common.enums.NotificationType;
 import com.bondhub.notificationservices.mapper.NotificationTemplateMapper;

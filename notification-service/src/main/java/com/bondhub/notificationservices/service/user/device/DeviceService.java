@@ -1,6 +1,6 @@
-package com.bondhub.notificationservices.service.device;
+package com.bondhub.notificationservices.service.user.device;
 
-import com.bondhub.notificationservices.dto.request.userdevice.DeviceTokenRequest;
+import com.bondhub.notificationservices.dto.request.user.device.DeviceTokenRequest;
 import com.bondhub.notificationservices.model.UserDevice;
 
 import java.util.List;
