@@ -5,8 +5,11 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @Builder
@@ -22,5 +25,12 @@ public class ChatUser {
     String email;
     Status status;
     String avatar;
-    Instant lastUpdatedAt;
+    LocalDateTime lastUpdatedAt;
+    
+    @Indexed
+    @Builder.Default
+    Set<String> friendIds = new HashSet<>();
+    
+    @Builder.Default
+    boolean isInvisible = false;
 }

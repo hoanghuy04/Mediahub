@@ -12,6 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "chat_messages")
+@org.springframework.data.mongodb.core.index.CompoundIndex(name = "chatId_createdAt_idx", def = "{'chatId': 1, 'createdAt': -1}")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @EqualsAndHashCode(callSuper = true)
 public class ChatMessage extends BaseModel {
@@ -23,9 +24,8 @@ public class ChatMessage extends BaseModel {
     String senderAvatar;
     String recipientId;
     String content;
+    public enum MessageType {
+        CHAT, JOIN, LEAVE, IMAGE, FILE
+    }
     MessageType type;
-}
-
-enum MessageType {
-    CHAT, JOIN, LEAVE
 }

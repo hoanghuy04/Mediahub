@@ -2,8 +2,10 @@ package com.bondhub.messageservice.controller;
 
 import com.bondhub.common.dto.ApiResponse;
 import com.bondhub.common.utils.SecurityUtil;
+import com.bondhub.messageservice.dto.response.ConversationResponse;
 import com.bondhub.messageservice.model.ChatMessage;
 import com.bondhub.messageservice.service.ChatMessageService;
+import com.bondhub.messageservice.service.ChatRoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,11 +22,12 @@ import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/chat")
+@RequestMapping("/messages")
 @Tag(name = "Chat", description = "Real-time chat API")
 public class ChatController {
 
     private final ChatMessageService chatMessageService;
+    private final ChatRoomService chatRoomService;
 
     @MessageMapping("/chat")
     public void processMessage(@Payload ChatMessage chatMessage, Principal principal) {
@@ -33,10 +36,18 @@ public class ChatController {
         chatMessageService.sendMessage(chatMessage);
     }
 
-    @GetMapping("/messages/{recipientId}")
+    @GetMapping("/{recipientId}")
     @Operation(summary = "Get chat messages by recipient ID")
     public ResponseEntity<ApiResponse<List<ChatMessage>>> findChatMessages(@PathVariable String recipientId) {
         return ResponseEntity.ok(ApiResponse.success(
                 chatMessageService.findChatMessages(recipientId)));
+    }
+
+    @GetMapping("/conversations")
+    @Operation(summary = "Get all chat rooms/conversations for the current user")
+    public ResponseEntity<ApiResponse<List<ConversationResponse>>> getMyConversations() {
+        return ResponseEntity.ok(ApiResponse.success(
+                chatRoomService.getUserConversations()
+        ));
     }
 }

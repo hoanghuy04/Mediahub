@@ -2,6 +2,8 @@ package com.bondhub.messageservice.dto.response;
 
 import lombok.Builder;
 
+import java.time.LocalDateTime;
+
 /**
  * Chat Notification DTO
  * Uses Java Record as per backend development rules
@@ -9,9 +11,11 @@ import lombok.Builder;
 @Builder
 public record ChatNotification(
     String id,
+    String chatId,
     String senderId,
     String senderName,
     String senderAvatar,
     String recipientId,
-    String content
+    String content,
+    LocalDateTime timestamp // Added new field
 ) {}

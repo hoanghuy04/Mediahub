@@ -60,7 +60,17 @@ spring:
 # Kafka Topics Configuration
 kafka:
   topics:
-    # Authentication & User Events
+    # User Events mapped by KafkaListener Property Resolution
+    user-events:
+      created: user.created
+      updated: user.updated
+      deleted: user.deleted
+    
+    # Friend Events
+    friend-events:
+      friendship-changed: friend.friendship.changed
+
+    # Authentication & User Events (Legacy or other services)
     user-registered: user.registered
     user-updated: user.updated
     user-deleted: user.deleted

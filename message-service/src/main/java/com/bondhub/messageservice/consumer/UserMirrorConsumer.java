@@ -9,7 +9,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -23,11 +24,12 @@ public class UserMirrorConsumer {
         log.info("Received USER_UPDATED event for userId: {}", event.userId());
         try {
             chatUserRepository.findById(event.userId()).ifPresentOrElse(user -> {
+                LocalDateTime eventTime = new Timestamp(event.timestamp()).toLocalDateTime();
                 // Idempotency: Only update if the event is newer than the last update
-                if (user.getLastUpdatedAt() == null || user.getLastUpdatedAt().isBefore(Instant.ofEpochMilli(event.timestamp()))) {
+                if (user.getLastUpdatedAt() == null || user.getLastUpdatedAt().isBefore(eventTime)) {
                     user.setFullName(event.fullName());
                     user.setAvatar(event.avatar());
-                    user.setLastUpdatedAt(Instant.ofEpochMilli(event.timestamp()));
+                    user.setLastUpdatedAt(eventTime);
                     chatUserRepository.save(user);
                     log.info("✅ Updated ChatUser mirror for userId: {}", event.userId());
                 } else {
@@ -39,7 +41,7 @@ public class UserMirrorConsumer {
                         .id(event.userId())
                         .fullName(event.fullName())
                         .avatar(event.avatar())
-                        .lastUpdatedAt(Instant.ofEpochMilli(event.timestamp()))
+                        .lastUpdatedAt(new Timestamp(event.timestamp()).toLocalDateTime())
                         .build();
                 chatUserRepository.save(newUser);
                 log.info("✅ Created new ChatUser mirror for userId: {}", event.userId());

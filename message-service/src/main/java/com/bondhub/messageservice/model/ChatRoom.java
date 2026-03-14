@@ -5,7 +5,11 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.IndexDirection;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
 
 @Data
 @SuperBuilder
@@ -17,7 +21,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class ChatRoom extends BaseModel {
     @Id
     String id;
+    @Indexed(unique = true)
     String chatId;
     String senderId;
     String recipientId;
+    String lastMessage;
+    @Indexed(direction = IndexDirection.DESCENDING)
+    LocalDateTime lastMessageTime;
 }

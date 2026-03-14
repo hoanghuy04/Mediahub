@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,28 +18,24 @@ import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/presence")
+@RequestMapping("/messages/presence")
 @Tag(name = "User Presence", description = "User online/offline status API")
 public class UserPresenceController {
 
     private final UserPresenceService userPresenceService;
 
     @MessageMapping("/user.addUser")
-    @SendTo("/topic/public")
-    public ChatUser addUser(
+    public void addUser(
             @Payload ChatUser user,
             SimpMessageHeaderAccessor headerAccessor) {
         ChatUser savedUser = userPresenceService.saveUser(user);
         headerAccessor.getSessionAttributes().put("userId", savedUser.getId());
-        return savedUser;
     }
 
     @MessageMapping("/user.disconnectUser")
-    @SendTo("/topic/public")
-    public ChatUser disconnectUser(
+    public void disconnectUser(
             @Payload ChatUser user) {
         userPresenceService.disconnect(user.getId());
-        return user;
     }
 
     @GetMapping("/online")

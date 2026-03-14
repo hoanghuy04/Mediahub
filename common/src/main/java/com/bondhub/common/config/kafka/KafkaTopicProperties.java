@@ -15,6 +15,13 @@ public class KafkaTopicProperties {
     private UserEvents userEvents = new UserEvents();
     private MessageEvents messageEvents = new MessageEvents();
     private NotificationEvents notificationEvents = new NotificationEvents();
+    private FriendEvents friendEvents = new FriendEvents();
+
+    @Getter
+    @Setter
+    public static class FriendEvents {
+        private String friendshipChanged = "friend.friendship.changed";
+    }
 
     @Getter
     @Setter

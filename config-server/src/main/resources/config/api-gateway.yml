@@ -160,6 +160,16 @@ spring:
                     fallbackUri: forward:/fallback/search-service
 
             # Message Service Routes (Protected - JWT required)
+            - id: message-service-ws
+              uri: lb:ws://message-service
+              predicates:
+                - Path=/ws/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: messageServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/message-service
+
             - id: message-service
               uri: lb://message-service
               predicates:
