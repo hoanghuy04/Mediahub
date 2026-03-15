@@ -1,5 +1,6 @@
 package com.bondhub.notificationservices.service.notification;
 
+import com.bondhub.common.enums.NotificationType;
 import com.bondhub.notificationservices.dto.response.notification.*;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public interface NotificationService {
 
     void markAllAsRead();
 
-    void sendTestNotification();
+    void deactivateByReferenceIdAndType(String userId, String referenceId, NotificationType type);
 
+    void sendTestNotification();
 }

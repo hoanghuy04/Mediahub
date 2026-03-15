@@ -16,6 +16,7 @@ public class NotificationKafkaTopicConfig {
 
     private String raw = "noti.raw";
     private String ready = "noti.ready";
+    private String cleanup = "noti.cleanup";
 
     @Bean
     public NewTopic notificationRawTopic() {
@@ -25,5 +26,10 @@ public class NotificationKafkaTopicConfig {
     @Bean
     public NewTopic notificationReadyTopic() {
         return TopicBuilder.name(ready).partitions(4).replicas(1).build();
+    }
+
+    @Bean
+    public NewTopic notificationCleanupTopic() {
+        return TopicBuilder.name(cleanup).partitions(4).replicas(1).build();
     }
 }

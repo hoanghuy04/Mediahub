@@ -7,8 +7,6 @@ import com.bondhub.notificationservices.model.UserDevice;
 import com.bondhub.notificationservices.repository.UserDeviceRepository;
 import com.bondhub.notificationservices.service.template.NotificationTemplateService;
 import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
-import com.bondhub.notificationservices.service.delivery.strategy.NotificationStrategy;
-import com.bondhub.notificationservices.service.presence.PresenceService;
 import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.google.firebase.messaging.*;
 import lombok.AccessLevel;
@@ -39,7 +37,6 @@ public class FcmDeliveryStrategy implements NotificationStrategy {
 
     UserDeviceRepository userDeviceRepository;
     NotificationTemplateService templateService;
-    PresenceService presenceService;
     UserPreferenceService userPreferenceService;
 
     @NonFinal
@@ -148,21 +145,29 @@ public class FcmDeliveryStrategy implements NotificationStrategy {
         String url = frontendUrl;
         if (!url.endsWith("/")) url += "/";
 
+        Map<String, String> dataPayload = new HashMap<>();
+        dataPayload.put("type", type);
+        dataPayload.put("title", title != null ? title : "");
+        dataPayload.put("body", body != null ? body : "");
+        dataPayload.put("actorId", lastActorId != null ? lastActorId : "");
+        dataPayload.put("actorName", lastActorName != null ? lastActorName : "");
+        dataPayload.put("actorAvatar", lastActorAvatar != null ? lastActorAvatar : "");
+        dataPayload.put("actorCount", String.valueOf(actorCount));
+        dataPayload.put("othersCount", String.valueOf(othersCount));
+        dataPayload.put("categoryIdentifier", categoryIdentifier);
+        dataPayload.put("requestId", requestId != null ? requestId : "");
+        dataPayload.put("url", url);
+
+        if (device.getPlatform() == Platform.ANDROID) {
+            dataPayload.put("customTitle", title != null ? title : "");
+            dataPayload.put("customBody", body != null ? body : "");
+            dataPayload.remove("title");
+            dataPayload.remove("body");
+        }
+
         Message.Builder messageBuilder = Message.builder()
                 .setToken(device.getFcmToken())
-                .putAllData(Map.ofEntries(
-                        Map.entry("type", type),
-                        Map.entry("title", title != null ? title : ""),
-                        Map.entry("body", body != null ? body : ""),
-                        Map.entry("actorId", lastActorId != null ? lastActorId : ""),
-                        Map.entry("actorName", lastActorName != null ? lastActorName : ""),
-                        Map.entry("actorAvatar", lastActorAvatar != null ? lastActorAvatar : ""),
-                        Map.entry("actorCount", String.valueOf(actorCount)),
-                        Map.entry("othersCount", String.valueOf(othersCount)),
-                        Map.entry("categoryIdentifier", categoryIdentifier),
-                        Map.entry("requestId", requestId != null ? requestId : ""),
-                        Map.entry("url", url)
-                ));
+                .putAllData(dataPayload);
 
         if (device.getPlatform() == Platform.WEB) {
             String iconUrl = lastActorAvatar != null && !lastActorAvatar.isEmpty() ? lastActorAvatar : "/images/logo.jpg";
@@ -173,12 +178,12 @@ public class FcmDeliveryStrategy implements NotificationStrategy {
                     .build());
         }
 
-        if (device.getPlatform() == Platform.ANDROID || device.getPlatform() == Platform.IOS) {
-             messageBuilder.setNotification(com.google.firebase.messaging.Notification.builder()
-                    .setTitle(title)
-                    .setBody(body)
-                    .build());
-        }
+//        if (device.getPlatform() == Platform.ANDROID || device.getPlatform() == Platform.IOS) {
+//             messageBuilder.setNotification(com.google.firebase.messaging.Notification.builder()
+//                    .setTitle(title)
+//                    .setBody(body)
+//                    .build());
+//        }
 
         if (device.getPlatform() == Platform.ANDROID) {
             messageBuilder.setAndroidConfig(AndroidConfig.builder()

@@ -28,7 +28,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
     static final String LIST_PREFIX = "batch:";
 
     StringRedisTemplate stringRedisTemplate;
-    ReadyNotificationPublisher readyPublisher; 
+    ReadyNotificationPublisher readyPublisher;
     UserPreferenceService userPreferenceService;
 
     ObjectMapper objectMapper = new ObjectMapper()
@@ -62,20 +62,21 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                 .distinct()
                 .toList();
 
-        int actorCount  = actorIds.size();
+        int actorCount = actorIds.size();
         int othersCount = actorCount - 1;
-        String locale   = userPreferenceService.getLocale(last.getRecipientId());
+        var prefs = userPreferenceService.getPreferences(last.getRecipientId());
+        String locale = prefs != null ? prefs.getLanguage() : "vi";
 
         List<Map<String, Object>> rawPayloads = events.stream()
                 .map(e -> {
                     Map<String, Object> p = new HashMap<>(
                             e.getPayload() != null ? e.getPayload() : Collections.emptyMap()
                     );
-                    p.put("actorId",     e.getActorId());
-                    p.put("actorName",   e.getActorName());
+                    p.put("actorId", e.getActorId());
+                    p.put("actorName", e.getActorName());
                     p.put("actorAvatar", e.getActorAvatar());
                     p.put("referenceId", e.getReferenceId());
-                    p.put("occurredAt",  e.getOccurredAt() != null ? e.getOccurredAt().toString() : null);
+                    p.put("occurredAt", e.getOccurredAt() != null ? e.getOccurredAt().toString() : null);
                     return p;
                 }).toList();
 
@@ -84,7 +85,7 @@ public class BatchFlushServiceImpl implements BatchFlushService {
                 .type(last.getType())
                 .actorIds(actorIds)
                 .actorCount(actorCount)
-                .totalEventCount(events.size()) 
+                .totalEventCount(events.size())
                 .referenceId(last.getReferenceId())
                 .lastActorId(last.getActorId())
                 .lastActorName(last.getActorName() != null ? last.getActorName() : last.getActorId())

@@ -10,6 +10,7 @@ import com.bondhub.friendservice.client.UserServiceClient;
 import com.bondhub.friendservice.dto.request.FriendRequestSendRequest;
 import com.bondhub.common.enums.NotificationType;
 import com.bondhub.common.event.notification.RawNotificationEvent;
+import com.bondhub.common.event.notification.CleanupNotificationEvent;
 import com.bondhub.common.publisher.RawNotificationEventPublisher;
 import com.bondhub.friendservice.dto.response.*;
 import com.bondhub.friendservice.mapper.FriendShipMapper;
@@ -83,8 +84,8 @@ public class FriendshipServiceImpl implements FriendshipService {
         RawNotificationEvent notificationEvent = RawNotificationEvent.builder()
                 .recipientId(receiverId)
                 .actorId(currentUserId)
-                .actorName(requester.getFullName())
-                .actorAvatar(requester.getAvatar())
+                .actorName(requester.fullName())
+                .actorAvatar(requester.avatar())
                 .type(NotificationType.FRIEND_REQUEST)
                 .referenceId(friendShip.getId())
                 .payload(Map.of("requestId", friendShip.getId()))
@@ -122,11 +123,11 @@ public class FriendshipServiceImpl implements FriendshipService {
         RawNotificationEvent notificationEvent = RawNotificationEvent.builder()
                 .recipientId(friendShip.getRequested())
                 .actorId(currentUserId)
-                .actorName(receiver.getFullName())
-                .actorAvatar(receiver.getAvatar())
+                .actorName(receiver.fullName())
+                .actorAvatar(receiver.avatar())
                 .type(NotificationType.FRIEND_ACCEPT)
                 .referenceId(friendShip.getId())
-                .payload(Map.of("friendshipId", friendShip.getId()))
+                .payload(Map.of("requestId", friendShip.getId()))
                 .occurredAt(LocalDateTime.now())
                 .build();
         rawNotificationEventPublisher.publish(notificationEvent);
@@ -154,6 +155,13 @@ public class FriendshipServiceImpl implements FriendshipService {
         friendShip.setFriendStatus(FriendStatus.DECLINED);
         friendShipRepository.save(friendShip);
         log.info("Friend request {} declined with status DECLINED", friendshipId);
+
+        CleanupNotificationEvent cleanupEvent = CleanupNotificationEvent.builder()
+                .recipientId(currentUserId)
+                .referenceId(friendShip.getId())
+                .type(NotificationType.FRIEND_REQUEST)
+                .build();
+        rawNotificationEventPublisher.publishCleanup(cleanupEvent);
     }
 
     @Override

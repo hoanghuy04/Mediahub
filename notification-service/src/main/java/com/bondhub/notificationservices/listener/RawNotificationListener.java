@@ -1,11 +1,13 @@
 package com.bondhub.notificationservices.listener;
 
+import com.bondhub.notificationservices.batch.BatcherService;
 import com.bondhub.notificationservices.client.UserServiceClient;
 import com.bondhub.notificationservices.event.BatchedNotificationEvent;
-import com.bondhub.common.event.notification.RawNotificationEvent;
-import com.bondhub.notificationservices.batch.BatcherService;
 import com.bondhub.notificationservices.publisher.ReadyNotificationPublisher;
+import com.bondhub.notificationservices.service.notification.NotificationService;
 import com.bondhub.notificationservices.service.user.preference.UserPreferenceService;
+import com.bondhub.common.event.notification.CleanupNotificationEvent;
+import com.bondhub.common.event.notification.RawNotificationEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -36,6 +38,7 @@ public class RawNotificationListener {
     BatcherService batcherService;
     ReadyNotificationPublisher readyPublisher;
     UserPreferenceService userPreferenceService;
+    NotificationService notificationService;
 
     ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -80,6 +83,45 @@ public class RawNotificationListener {
         } catch (Exception e) {
             log.error("[RawListener] Critical error processing event: {}", event.getRecipientId(), e);
             throw new RuntimeException("RawListener processing failed", e);
+        }
+    }
+
+    @KafkaListener(
+            topics = "#{notificationKafkaTopicConfig.cleanup}",
+            groupId = "noti-cleanup-group",
+            containerFactory = "pipelineListenerContainerFactory"
+    )
+    public void handleCleanupNotification(
+            @Payload String message,
+            Acknowledgment acknowledgment) {
+
+        log.info("[CleanupListener] Received cleanup event");
+
+        CleanupNotificationEvent event = deserializeCleanup(message);
+        if (event == null) {
+            ack(acknowledgment);
+            return;
+        }
+
+        try {
+            notificationService.deactivateByReferenceIdAndType(
+                    event.getRecipientId(),
+                    event.getReferenceId(),
+                    event.getType()
+            );
+            ack(acknowledgment);
+        } catch (Exception e) {
+            log.error("[CleanupListener] Error processing cleanup for recipient: {}", event.getRecipientId(), e);
+            throw new RuntimeException("CleanupListener failed", e);
+        }
+    }
+
+    private CleanupNotificationEvent deserializeCleanup(String json) {
+        try {
+            return objectMapper.readValue(json, CleanupNotificationEvent.class);
+        } catch (Exception e) {
+            log.error("[CleanupListener] Json mapping failed: {}", json, e);
+            return null;
         }
     }
 

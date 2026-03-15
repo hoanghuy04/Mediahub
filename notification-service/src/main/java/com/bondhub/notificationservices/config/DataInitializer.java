@@ -104,6 +104,13 @@ public class DataInitializer {
                 "New message",
                 "{{actorName}} sent you a message.");
 
+        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.FCM, "vi",
+                "Chấp nhận kết bạn",
+                "{{actorName}} đã chấp nhận lời mời kết bạn của bạn.");
+        seedIfAbsent(NotificationType.FRIEND_ACCEPT, NotificationChannel.FCM, "en",
+                "Friend accepted",
+                "{{actorName}} accepted your friend request.");
+
         // --- SHARED SYSTEM TEMPLATES ---
         seedIfAbsent(NotificationType.SYSTEM, NotificationChannel.IN_APP, "vi",
                 "Thông báo hệ thống",

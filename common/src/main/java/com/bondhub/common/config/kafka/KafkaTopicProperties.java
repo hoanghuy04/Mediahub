@@ -48,6 +48,7 @@ public class KafkaTopicProperties {
     @Setter
     public static class NotificationEvents {
         private String raw = "noti.raw";
+        private String cleanup = "noti.cleanup";
     }
 
     @Getter

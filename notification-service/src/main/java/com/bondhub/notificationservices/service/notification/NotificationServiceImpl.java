@@ -3,7 +3,6 @@ package com.bondhub.notificationservices.service.notification;
 import com.bondhub.common.utils.LocalizationUtil;
 import com.bondhub.common.utils.SecurityUtil;
 import com.bondhub.notificationservices.client.UserServiceClient;
-import com.bondhub.notificationservices.dto.request.notification.CreateFriendRequestNotificationRequest;
 import com.bondhub.notificationservices.dto.response.notification.*;
 import com.bondhub.notificationservices.dto.response.template.NotificationTemplateResponse;
 import com.bondhub.notificationservices.enums.NotificationChannel;
@@ -33,7 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,7 +69,8 @@ public class NotificationServiceImpl implements NotificationService {
             int limit) {
         String userId = securityUtil.getCurrentUserId();
 
-        Criteria criteria = Criteria.where("userId").is(userId);
+        Criteria criteria = Criteria.where("userId").is(userId)
+                .and("active").is(true);
 
         if (Boolean.TRUE.equals(unreadOnly)) {
             criteria.and("isRead").is(false);
@@ -200,6 +199,19 @@ public class NotificationServiceImpl implements NotificationService {
                 .set("readAt", LocalDateTime.now());
 
         mongoTemplate.updateMulti(query, update, Notification.class);
+    }
+
+    @Override
+    public void deactivateByReferenceIdAndType(String userId, String referenceId, NotificationType type) {
+        Query query = new Query(Criteria.where("userId").is(userId)
+                .and("referenceId").is(referenceId)
+                .and("type").is(type)
+                .and("active").is(true));
+
+        Update update = new Update().set("active", false);
+        var result = mongoTemplate.updateMulti(query, update, Notification.class);
+        log.info("[Notification] Deactivated {} notifications for referenceId={}, type={}, userId={}", 
+                result.getModifiedCount(), referenceId, type, userId);
     }
 
     @Override
