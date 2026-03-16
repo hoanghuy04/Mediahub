@@ -8,12 +8,10 @@ import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-/**
- * Entity representing a blocked relationship between users
- */
 @Document("block_list")
 @Getter
 @Setter
@@ -33,8 +31,11 @@ public class BlockList extends BaseModel {
     @MongoId(FieldType.OBJECT_ID)
     String id;
 
-    String blockerId;      // User who blocked
-    String blockedUserId;  // User who was blocked
+    @Field(targetType =  FieldType.OBJECT_ID)
+    String blockerId;
 
-    BlockPreference preference; // Specific blocking preferences for this relationship
+    @Field(targetType =  FieldType.OBJECT_ID)
+    String blockedUserId;
+
+    BlockPreference preference;
 }
