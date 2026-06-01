@@ -274,3 +274,4 @@ pip-wheel-metadata/
 # Editor/OS noise
 .idea/
 /k8s/bondhub-common-secrets.yaml
+bondhub-key.pem

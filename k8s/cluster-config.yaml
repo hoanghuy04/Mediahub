@@ -4,21 +4,17 @@ metadata:
   name: bondhub-cluster-final
   region: ap-southeast-2
 
+# ĐỂ EKSCTL TỰ ĐẺ VPC VÀ CẤU HÌNH ROUTE chuẩn doanh nghiệp
 vpc:
-  id: "vpc-0893ebef8e9e45436"
-  subnets:
-    public:
-      ap-southeast-2a: { id: "subnet-00229b47154d47230" }
-      ap-southeast-2b: { id: "subnet-012c3212ed4802857" }
-    private:
-      ap-southeast-2a: { id: "subnet-05d9381df3f4cb107" }
-      ap-southeast-2b: { id: "subnet-04141c8752f11d867" }
+  cidr: "10.0.0.0/16"
+  nat:
+    gateway: HighlyAvailable # Tự động tạo NAT Gateway ở Public Subnet cho các Node ngầm đi ra ngoài
 
 managedNodeGroups:
   - name: ng-0-middleware
     instanceType: m7i-flex.large
     desiredCapacity: 1
-    privateNetworking: true
+    privateNetworking: true # Node chạy trong Private Subnet
     labels: { node-type: middleware }
 
   - name: ng-1-infra

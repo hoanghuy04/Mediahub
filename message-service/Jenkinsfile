@@ -3,7 +3,7 @@ pipeline {
     tools { maven 'maven-3.9' }
 
     environment {
-        AWS_ACCOUNT_ID = "952647925716"
+        AWS_ACCOUNT_ID = "180331802860"
         AWS_REGION     = "ap-southeast-2"
         IMAGE_REPO     = "bondhub/message-service"
         IMAGE_TAG      = "${env.BUILD_NUMBER}"

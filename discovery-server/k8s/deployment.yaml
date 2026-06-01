@@ -17,7 +17,7 @@ spec:
         node-type: infra
       containers:
         - name: discovery-server
-          image: 952647925716.dkr.ecr.ap-southeast-2.amazonaws.com/bondhub/discovery-server:latest
+          image: 180331802860.dkr.ecr.ap-southeast-2.amazonaws.com/bondhub/discovery-server:latest
           ports:
             - containerPort: 8761
           readinessProbe:
