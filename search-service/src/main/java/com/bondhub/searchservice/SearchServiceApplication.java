@@ -18,10 +18,10 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableFeignClients
 @EnableMongoRepositories(basePackages = {
         "com.bondhub.common.repository",
-        "com.bondhub.searchservice.repository.mongo"
+        "com.bondhub.searchservice.repository.mongodb"
 })
 @EnableElasticsearchRepositories(basePackages = {
-        "com.bondhub.searchservice.repository.elastic"
+        "com.bondhub.searchservice.repository.elasticsearch"
 })
 public class SearchServiceApplication {
 
