@@ -1,8 +1,4 @@
-<<<<<<<< HEAD:search-service/src/main/java/com/bondhub/searchservice/repository/mongo/FailedEventRepository.java
-package com.bondhub.searchservice.repository.mongo;
-========
 package com.bondhub.searchservice.repository.mongodb;
->>>>>>>> eb452c700dc1e59691170534b60244dc464d868e:search-service/src/main/java/com/bondhub/searchservice/repository/mongodb/FailedEventRepository.java
 
 import com.bondhub.common.model.kafka.EventType;
 import com.bondhub.searchservice.model.mongodb.FailedEvent;
