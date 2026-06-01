@@ -6,6 +6,7 @@ metadata:
 data:
   EUREKA_SERVER_URL: "http://bh-discovery-server:8761/eureka/"
   CONFIG_SERVER_URL: "http://bh-config-server:8888"
+  API_GATEWAY_URL: "http://bh-api-gateway:8080"
 
   # MongoDB
   MONGODB_PORT: "27017"
