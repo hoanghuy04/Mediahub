@@ -55,9 +55,20 @@ data:
         Merge_Log           On
         Keep_Log            Off
 
+    # =================================================================
+    # 🔥 BỘ LỌC CẢNH BÁO: Chỉ giữ lại log lỗi ERROR/5xx cho luồng Slack
+    # =================================================================
+    [FILTER]
+        Name                  grep
+        Match                 kube.*
+        Regex                 log (ERROR|500|501|502|503|504)
+
+    # =================================================================
+    # 💾 OUTPUT 1: Đẩy TOÀN BỘ LOG về Elasticsearch
+    # =================================================================
     [OUTPUT]
         Name            es
-        Match           *
+        Match           kube.*
         Host            bh-elasticsearch
         Port            9200
         Index           bondhub-logs
@@ -66,6 +77,17 @@ data:
         Logstash_Prefix bondhub
         Replace_Dots    On
         Retry_Limit     False
+
+    # =================================================================
+    # 🚀 OUTPUT 2: Đẩy log lỗi trực tiếp về kênh Slack 
+    # =================================================================
+    [OUTPUT]
+        Name            slack
+        Match           kube.*
+        Gateway         hooks.slack.com
+        Line            /services/T0B7J5FMX3P/B0B8FS67X3J/8EX0gW6pMQQfFKR4PtpwYaC8
+        Format          Custom
+        Message         🚨 *[BONDHUB ALERT]* \n*Time:* %Y-%m-%dT%H:%M:%S \n*Pod Name:* $kubernetes['pod_name'] \n*Log Content:* \n```$log```
 ---
 apiVersion: apps/v1
 kind: DaemonSet
