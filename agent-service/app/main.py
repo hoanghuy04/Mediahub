@@ -12,12 +12,30 @@ from app.dto.response.api_response import ApiResponse
 from app.exception.handlers import register_exception_handlers
 from app.i18n import resolve_locale, reset_request_locale, set_request_locale
 import uvicorn
+import json
+from datetime import datetime, timezone
 import logging
 
-# Configure logging
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "@timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+            "@version": "1",
+            "message": record.getMessage(),
+            "logger_name": record.name,
+            "level": record.levelname,
+            "thread_name": record.threadName
+        }
+        if record.exc_info:
+            log_record["stack_trace"] = self.formatException(record.exc_info)
+        return json.dumps(log_record, ensure_ascii=False)
+
+# Configure logging to output JSON
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers=[handler]
 )
 logger = logging.getLogger(__name__)
 
