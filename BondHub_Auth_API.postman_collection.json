@@ -275,6 +275,20 @@
             "description": "Validate if a JWT token is valid and not expired. Returns true/false."
           },
           "response": []
+        },
+        {
+          "name": "Test 500 Internal Server Error",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/test-500",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "test-500"]
+            },
+            "description": "Trigger a simulated 500 Internal Server Error for testing alert systems like Fluent-bit and Slack alerts."
+          },
+          "response": []
         }
       ],
       "description": "Authentication endpoints for register, login, token refresh, and validation"
