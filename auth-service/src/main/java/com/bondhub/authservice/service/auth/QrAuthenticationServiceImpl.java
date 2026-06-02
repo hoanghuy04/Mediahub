@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -66,7 +67,7 @@ public class QrAuthenticationServiceImpl implements QrAuthenticationService {
 
         return QrGenerationResponse.builder()
                 .qrId(qrId)
-                .expiresAt(expiresAt)
+                .expiresAt(expiresAt.atZone(ZoneId.systemDefault()).toInstant())
                 .qrContent(qrProperties.getContentPrefix() + qrId)
                 .build();
     }
