@@ -15,5 +15,6 @@ public record UserUpdateRequest(
     LocalDate dob,
 
     String bio,
-    Gender gender
+    Gender gender,
+    java.util.Set<String> initialInterests
 ) {}

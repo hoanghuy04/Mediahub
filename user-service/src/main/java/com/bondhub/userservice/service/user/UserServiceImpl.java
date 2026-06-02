@@ -267,6 +267,7 @@ public class UserServiceImpl implements UserService {
                 .background(response.background() != null ? baseUrl + response.background() : null)
                 .backgroundY(response.backgroundY())
                 .role(accountResponse != null ? accountResponse.role() : null)
+                .initialInterests(user.getInitialInterests())
                 .build();
     }
 

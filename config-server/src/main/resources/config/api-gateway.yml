@@ -478,7 +478,8 @@ spring:
           globalCors:
             cors-configurations:
               "[/**]":
-                allowed-origins: ${CORS_ALLOWED_ORIGINS}
+                # allowed-origins: ${CORS_ALLOWED_ORIGINS}
+                allowed-origin-patterns: ${CORS_ALLOWED_ORIGINS}
                 allowed-methods:
                   - GET
                   - POST
@@ -516,7 +517,7 @@ jwt:
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_SERVER_URL}
+      defaultZone: ${EUREKA_SERVER_URL:http://bh-discovery-server:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
