@@ -23,6 +23,7 @@ public class SecurityPaths {
             "/api/auth/validate",
             "/api/auth/qr/generate",
             "/api/auth/qr/wait/**",
+            "/api/auth/test-500",
 
             // WebSocket endpoints
             "/ws/**",
@@ -89,6 +90,7 @@ public class SecurityPaths {
             "/auth/logout",
             "/auth/qr/generate",
             "/auth/qr/wait/**",
+            "/auth/test-500",
 
             // WebSocket endpoints
             "/ws/**",
