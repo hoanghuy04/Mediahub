@@ -17,5 +17,6 @@ public record UserProfileResponse(
     LocalDate dob,
     String avatar,
     String background,
-    Double backgroundY
+    Double backgroundY,
+    java.util.Set<String> initialInterests
 ) {}
