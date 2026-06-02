@@ -84,10 +84,7 @@ data:
     [OUTPUT]
         Name            slack
         Match           kube.*
-        Gateway         hooks.slack.com
-        Line            /services/T0B7J5FMX3P/B0B8FS67X3J/8EX0gW6pMQQfFKR4PtpwYaC8
-        Format          Custom
-        Message         🚨 *[BONDHUB ALERT]* \n*Time:* %Y-%m-%dT%H:%M:%S \n*Pod Name:* $kubernetes['pod_name'] \n*Log Content:* \n```$log```
+        Webhook         ${SLACK_WEBHOOK_URL}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -110,6 +107,12 @@ spec:
       - name: fluent-bit
         image: cr.fluentbit.io/fluent/fluent-bit:2.1.10
         imagePullPolicy: Always
+        env:
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: fluentbit-secrets
+              key: SLACK_WEBHOOK_URL
         volumeMounts:
         - name: varlog
           mountPath: /var/log
