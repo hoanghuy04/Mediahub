@@ -43,10 +43,11 @@ data:
     [INPUT]
         Name              tail
         Path              /var/log/containers/*_bondhub_*.log
-        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*elasticsearch*.log,/var/log/containers/*kafka*.log,/var/log/containers/*kibana*.log,/var/log/containers/*mongodb*.log,/var/log/containers/*neo4j*.log,/var/log/containers/*qdrant*.log,/var/log/containers/*redis*.log,/var/log/containers/*jenkins*.log,/var/log/containers/*socket-service*.log,/var/log/containers/*notification-service*.log
+        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*elasticsearch*.log,/var/log/containers/*kibana*.log,/var/log/containers/*jenkins*.log
+        # 🎯 Đọc log theo cơ chế luồng thô của container runtime trên EKS
         multiline.parser  cri
         Tag               kube.*
-        Mem_Buf_Limit     5MB
+        Mem_Buf_Limit     50MB
         Skip_Long_Lines   Off
 
     [FILTER]
