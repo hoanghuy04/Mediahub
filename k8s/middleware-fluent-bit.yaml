@@ -43,10 +43,11 @@ data:
     [INPUT]
         Name              tail
         Path              /var/log/containers/*.log
-        Parser            docker
+        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*elasticsearch*.log,/var/log/containers/*kafka*.log,/var/log/containers/*kibana*.log,/var/log/containers/*mongodb*.log,/var/log/containers/*neo4j*.log,/var/log/containers/*qdrant*.log,/var/log/containers/*redis*.log,/var/log/containers/*jenkins*.log
+        multiline.parser  cri
         Tag               kube.*
         Mem_Buf_Limit     5MB
-        Skip_Long_Lines   On
+        Skip_Long_Lines   Off
 
     [FILTER]
         Name                kubernetes
@@ -55,15 +56,29 @@ data:
         Merge_Log           On
         Keep_Log            Off
 
+    [FILTER]
+        Name                parser
+        Match               kube.*
+        Key_Name            message
+        Parser              json
+        Reserve_Data        On
+
+    # =================================================================
+    # 🔍 BỘ LỌC BACKEND: Chỉ giữ lại log từ backend Java
+    # =================================================================
+    [FILTER]
+        Name                grep
+        Match               kube.*
+        Regex               logger_name ^com\.bondhub\..*$
+        Regex               level ^(DEBUG|INFO|WARN|ERROR|FATAL)$
+
     # =================================================================
     # 🔥 BỘ LỌC CẢNH BÁO: Phân luồng các log lỗi sang tag alert.slack
     # =================================================================
     [FILTER]
         Name                  rewrite_tag
         Match                 kube.*
-        Rule                  $level "^(ERROR|FATAL)$"                  alert.slack true
-        Rule                  $status "^(500|501|502|503|504)$"          alert.slack true
-        Rule                  $message "(Internal Server Error)"        alert.slack true
+        Rule                  $level ^(ERROR|FATAL)$                  alert.slack true
 
     # =================================================================
     # 💾 OUTPUT 1: Đẩy TOÀN BỘ LOG về Elasticsearch
@@ -87,6 +102,10 @@ data:
         Name            slack
         Match           alert.slack
         Webhook         ${SLACK_WEBHOOK_URL}
+
+    [OUTPUT]
+        Name            stdout
+        Match           alert.slack
 ---
 apiVersion: apps/v1
 kind: DaemonSet
