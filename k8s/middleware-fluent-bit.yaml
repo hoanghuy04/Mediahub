@@ -43,7 +43,7 @@ data:
     [INPUT]
         Name              tail
         Path              /var/log/containers/*.log
-        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*elasticsearch*.log,/var/log/containers/*kafka*.log,/var/log/containers/*kibana*.log,/var/log/containers/*mongodb*.log,/var/log/containers/*neo4j*.log,/var/log/containers/*qdrant*.log,/var/log/containers/*redis*.log,/var/log/containers/*jenkins*.log
+        Exclude_Path      /var/log/containers/*fluent-bit*.log,/var/log/containers/*elasticsearch*.log,/var/log/containers/*kafka*.log,/var/log/containers/*kibana*.log,/var/log/containers/*mongodb*.log,/var/log/containers/*neo4j*.log,/var/log/containers/*qdrant*.log,/var/log/containers/*redis*.log,/var/log/containers/*jenkins*.log,/var/log/containers/*socket-service*.log,/var/log/containers/*notification-service*.log
         multiline.parser  cri
         Tag               kube.*
         Mem_Buf_Limit     5MB
