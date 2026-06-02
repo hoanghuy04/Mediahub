@@ -11,6 +11,7 @@ from app.config.app_config import settings
 from app.config.constants import BONDHUB_AI_ID
 from app.dto.request.chat_request import ChatRequest
 from app.dto.response.chat_response import ChatAnswerChunkEventResponse, ChatStatusEventResponse
+from langchain_community.callbacks.manager import get_openai_callback
 from app.utils.string_utils import sanitize_ai_query
 from app.client.message_client import get_recent_messages
 
@@ -77,41 +78,54 @@ class ChatService:
 
             full_response_accum = []
 
-            # 4. Stream events từ Graph
-            async for event in graph.astream_events(input_state, config=config, version="v2"):
-                kind = event["event"]
-                node_name = event.get("metadata", {}).get("langgraph_node")
+            logger.info("--- [AGENT EXECUTION STARTED] ---")
+            logger.info(f"Conversation ID: {conversation_id}")
+            logger.info(f"User ID: {user_id}")
+            logger.info(f"Input Query: {clean_query}")
 
-                # Gửi trạng thái xử lý (STATUS)
-                if (kind == "on_chain_start" or kind == "on_chat_model_start") and node_name:
-                    status_event = self._handle_status_event(node_name)
-                    if status_event:
-                        payload = ChatStatusEventResponse(type="STATUS", content=status_event)
-                        yield f"data: {json.dumps(payload.model_dump())}\n\n"
+            with get_openai_callback() as cb:
+                # 4. Stream events từ Graph
+                async for event in graph.astream_events(input_state, config=config, version="v2"):
+                    kind = event["event"]
+                    node_name = event.get("metadata", {}).get("langgraph_node")
 
-                # Gửi từng phần câu trả lời (ANSWER_CHUNK)
-                if kind == "on_chat_model_stream":
-                    chunk = event["data"].get("chunk")
-                    if chunk and hasattr(chunk, "content") and chunk.content:
-                        full_response_accum.append(chunk.content)
-                        payload = ChatAnswerChunkEventResponse(type="ANSWER_CHUNK", content=chunk.content)
-                        yield f"data: {json.dumps(payload.model_dump())}\n\n"
-
-                # Xử lý các node kết thúc không stream (như clarify)
-                if kind == "on_chain_end" and node_name in [edges.NODE_GENERATE, edges.NODE_CLARIFY]:
-                    output = event["data"].get("output", {})
-                    if isinstance(output, dict) and "answer" in output:
-                        answer = output["answer"]
-                        if answer and not "".join(full_response_accum):
-                            full_response_accum.append(answer)
-                            payload = ChatAnswerChunkEventResponse(type="ANSWER_CHUNK", content=answer)
+                    # Gửi trạng thái xử lý (STATUS)
+                    if (kind == "on_chain_start" or kind == "on_chat_model_start") and node_name:
+                        status_event = self._handle_status_event(node_name)
+                        if status_event:
+                            payload = ChatStatusEventResponse(type="STATUS", content=status_event)
                             yield f"data: {json.dumps(payload.model_dump())}\n\n"
 
-            # 5. Xử lý phản hồi cuối cùng và Persistence
-            full_response = "".join(full_response_accum)
-            if not full_response:
-                final_state = await graph.aget_state(config)
-                full_response = final_state.values.get("answer", "")
+                    # Gửi từng phần câu trả lời (ANSWER_CHUNK)
+                    if kind == "on_chat_model_stream":
+                        chunk = event["data"].get("chunk")
+                        if chunk and hasattr(chunk, "content") and chunk.content:
+                            full_response_accum.append(chunk.content)
+                            payload = ChatAnswerChunkEventResponse(type="ANSWER_CHUNK", content=chunk.content)
+                            yield f"data: {json.dumps(payload.model_dump())}\n\n"
+
+                    # Xử lý các node kết thúc không stream (như clarify)
+                    if kind == "on_chain_end" and node_name in [edges.NODE_GENERATE, edges.NODE_CLARIFY]:
+                        output = event["data"].get("output", {})
+                        if isinstance(output, dict) and "answer" in output:
+                            answer = output["answer"]
+                            if answer and not "".join(full_response_accum):
+                                full_response_accum.append(answer)
+                                payload = ChatAnswerChunkEventResponse(type="ANSWER_CHUNK", content=answer)
+                                yield f"data: {json.dumps(payload.model_dump())}\n\n"
+
+                # 5. Xử lý phản hồi cuối cùng và Persistence
+                full_response = "".join(full_response_accum)
+                if not full_response:
+                    final_state = await graph.aget_state(config)
+                    full_response = final_state.values.get("answer", "")
+
+                logger.info("--- [AGENT EXECUTION COMPLETED] ---")
+                logger.info(f"Output Response: {full_response}")
+                logger.info(f"Prompt Tokens: {cb.prompt_tokens}")
+                logger.info(f"Completion Tokens: {cb.completion_tokens}")
+                logger.info(f"Total Tokens Used: {cb.total_tokens}")
+                logger.info(f"Total Cost (USD): ${cb.total_cost:.6f}")
 
             if full_response:
                 background_tasks.add_task(persist_ai_response, conversation_id, full_response, user_id, is_mention)
