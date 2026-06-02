@@ -70,7 +70,7 @@ data:
     [FILTER]
         Name                grep
         Match               kube.*
-        Regex               logger_name ^com\.bondhub\..*$
+        Regex               logger_name ^(com\.bondhub|app)\..*$
         Regex               level ^(DEBUG|INFO|WARN|ERROR|FATAL)$
 
     # =================================================================
