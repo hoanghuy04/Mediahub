@@ -56,12 +56,14 @@ data:
         Keep_Log            Off
 
     # =================================================================
-    # 🔥 BỘ LỌC CẢNH BÁO: Chỉ giữ lại log lỗi ERROR/5xx cho luồng Slack
+    # 🔥 BỘ LỌC CẢNH BÁO: Phân luồng các log lỗi sang tag alert.slack
     # =================================================================
     [FILTER]
-        Name                  grep
+        Name                  rewrite_tag
         Match                 kube.*
-        Regex                 log (ERROR|500|501|502|503|504)
+        Rule                  $level "^(ERROR|FATAL)$"                  alert.slack true
+        Rule                  $status "^(500|501|502|503|504)$"          alert.slack true
+        Rule                  $message "(Internal Server Error)"        alert.slack true
 
     # =================================================================
     # 💾 OUTPUT 1: Đẩy TOÀN BỘ LOG về Elasticsearch
@@ -83,7 +85,7 @@ data:
     # =================================================================
     [OUTPUT]
         Name            slack
-        Match           kube.*
+        Match           alert.slack
         Webhook         ${SLACK_WEBHOOK_URL}
 ---
 apiVersion: apps/v1
