@@ -43,6 +43,7 @@ pipeline {
                 script {
                     if (env.GIT_PREVIOUS_COMMIT != null && env.GIT_PREVIOUS_COMMIT != env.GIT_COMMIT) {
                         def changedFiles = sh(script: "git diff --name-only ${env.GIT_PREVIOUS_COMMIT} ${env.GIT_COMMIT}", returnStatus: false, returnStdout: true).trim()
+                        echo "--- List of changed files: ---\n${changedFiles}"
                         def hasChanges = changedFiles.contains("user-service/") || changedFiles.contains("common/") || changedFiles.contains("pom.xml")
                         if (!hasChanges) {
                             IS_CHANGED = false
