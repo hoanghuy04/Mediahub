@@ -23,6 +23,11 @@ public class SystemMessageRenderer implements NotificationRenderer {
             return "";
         }
 
+        String systemMessage = SystemActionRenderer.render(notification, locale);
+        if (renderData != null) {
+            renderData.put("message", systemMessage);
+        }
+
         try {
             NotificationTemplateResponse template = templateService.getTemplate(
                     notification.getType(),
@@ -32,7 +37,7 @@ public class SystemMessageRenderer implements NotificationRenderer {
             return templateService.render(template.bodyTemplate(), renderData);
         } catch (Exception e) {
             log.debug("Template not found for system action, using hardcoded rendering", e);
-            return SystemActionRenderer.render(notification, locale);
+            return systemMessage;
         }
     }
 }
