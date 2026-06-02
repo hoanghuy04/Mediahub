@@ -33,6 +33,7 @@ public class SystemActionRenderer {
             case "TRANSFER_OWNER" -> isVi ? actorName + " đã chuyển quyền trưởng nhóm" : actorName + " transferred group ownership";
             case "PIN_MESSAGE" -> isVi ? actorName + " đã ghim một tin nhắn" : actorName + " pinned a message";
             case "UNPIN_MESSAGE" -> isVi ? actorName + " đã bỏ ghim tin nhắn" : actorName + " unpinned a message";
+            case "REMINDER" -> renderReminder(notification, actorName, isVi);
             default -> isVi ? "Thông báo mới từ hệ thống" : "New system notification";
         };
     }
@@ -76,6 +77,43 @@ public class SystemActionRenderer {
         }
 
         return isVi ? actorName + " đã cập nhật cài đặt nhóm" : actorName + " updated group settings";
+    }
+
+    private static String renderReminder(Notification notification, String actorName, boolean isVi) {
+        String title = getString(notification, "title");
+        if (title == null || title.isBlank()) {
+            title = getString(notification, "message");
+        }
+        if (title == null || title.isBlank()) {
+            title = isVi ? "Nhắc hẹn" : "Reminder";
+        }
+
+        boolean isTrigger = "true".equalsIgnoreCase(getString(notification, "isTriggerMessage"))
+                || getString(notification, "triggeredAt") != null;
+
+        if (isTrigger) {
+            return isVi ? "Đến giờ nhắc hẹn: " + title
+                        : "Reminder time: " + title;
+        }
+
+        boolean isDelete = "true".equalsIgnoreCase(getString(notification, "deleteAction"))
+                || "true".equalsIgnoreCase(getString(notification, "deleteNotice"));
+
+        if (isDelete) {
+            return isVi ? actorName + " đã xóa nhắc hẹn: " + title
+                        : actorName + " deleted a reminder: " + title;
+        }
+
+        boolean isEdit = "true".equalsIgnoreCase(getString(notification, "editAction"))
+                || "true".equalsIgnoreCase(getString(notification, "isEditAction"));
+
+        if (isEdit) {
+            return isVi ? actorName + " đã sửa một nhắc hẹn: " + title
+                        : actorName + " updated a reminder: " + title;
+        }
+
+        return isVi ? actorName + " đã tạo một nhắc hẹn: " + title
+                    : actorName + " created a reminder: " + title;
     }
 
     private static String getString(Notification notification, String key) {
