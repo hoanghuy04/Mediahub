@@ -84,6 +84,7 @@ class ChatService:
             logger.info(f"Input Query: {clean_query}")
 
             with get_openai_callback() as cb:
+                config["callbacks"] = [cb]
                 # 4. Stream events từ Graph
                 async for event in graph.astream_events(input_state, config=config, version="v2"):
                     kind = event["event"]
