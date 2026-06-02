@@ -74,6 +74,7 @@ metadata:
   name: bh-kibana
   namespace: bondhub
 spec:
+  type: LoadBalancer
   ports:
     - port: 5601
       targetPort: 5601
