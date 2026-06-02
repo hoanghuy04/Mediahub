@@ -12,6 +12,7 @@ from app.config.constants import BONDHUB_AI_ID
 from app.dto.request.chat_request import ChatRequest
 from app.dto.response.chat_response import ChatAnswerChunkEventResponse, ChatStatusEventResponse
 from langchain_community.callbacks.manager import get_openai_callback
+from langchain_core.tracers.context import tracing_v2_enabled
 from app.utils.string_utils import sanitize_ai_query
 from app.client.message_client import get_recent_messages
 
@@ -83,8 +84,8 @@ class ChatService:
             logger.info(f"User ID: {user_id}")
             logger.info(f"Input Query: {clean_query}")
 
-            with get_openai_callback() as cb:
-                config["callbacks"] = [cb]
+            with tracing_v2_enabled(project_name="bondhub-ai-agent") as trace_cb, get_openai_callback() as cb:
+                config["callbacks"] = [trace_cb, cb]
                 # 4. Stream events từ Graph
                 async for event in graph.astream_events(input_state, config=config, version="v2"):
                     kind = event["event"]
@@ -127,6 +128,12 @@ class ChatService:
                 logger.info(f"Completion Tokens: {cb.completion_tokens}")
                 logger.info(f"Total Tokens Used: {cb.total_tokens}")
                 logger.info(f"Total Cost (USD): ${cb.total_cost:.6f}")
+                try:
+                    run_url = trace_cb.get_run_url()
+                    if run_url:
+                        logger.info(f"LangSmith Trace URL: {run_url}")
+                except Exception as trace_err:
+                    logger.debug(f"Failed to get LangSmith run URL: {trace_err}")
 
             if full_response:
                 background_tasks.add_task(persist_ai_response, conversation_id, full_response, user_id, is_mention)
