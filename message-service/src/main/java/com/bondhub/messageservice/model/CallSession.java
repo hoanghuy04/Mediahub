@@ -33,6 +33,7 @@ public class CallSession extends BaseModel {
     String receiverAvatar;
 
     String roomId;
+    String callKind;
 
     @Builder.Default
     CallStatus status = CallStatus.RINGING;

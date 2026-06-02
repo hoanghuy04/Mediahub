@@ -120,12 +120,13 @@ public class CallServiceImpl implements CallService {
                 .receiverName(receiverInfo.fullName())
                 .receiverAvatar(receiverInfo.avatar())
                 .roomId(roomId)
+                .callKind(request.callKind() != null ? request.callKind() : "video")
                 .status(CallSession.CallStatus.RINGING)
                 .startTime(LocalDateTime.now())
                 .build();
 
         session = callSessionRepository.save(session);
-        log.info("Call session created: {} | room: {}", session.getId(), roomId);
+        log.info("Call session created: {} | room: {} | kind: {}", session.getId(), roomId, session.getCallKind());
 
         // Mark caller as BUSY with short ringing TTL (auto-expire if no answer)
         setUserBusy(callerId, RINGING_TTL);
@@ -308,7 +309,8 @@ public class CallServiceImpl implements CallService {
                         "sessionId", session.getId(),
                         "roomId", session.getRoomId(),
                         "callerName", session.getCallerName(),
-                        "callerAvatar", session.getCallerAvatar() != null ? session.getCallerAvatar() : ""))
+                        "callerAvatar", session.getCallerAvatar() != null ? session.getCallerAvatar() : "",
+                        "callKind", session.getCallKind() != null ? session.getCallKind() : "video"))
                 .occurredAt(LocalDateTime.now())
                 .build();
 
