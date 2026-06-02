@@ -264,4 +264,10 @@ public class AuthController {
         boolean isValid = authenticationService.validateToken(token);
         return ResponseEntity.ok(ApiResponse.success(isValid));
     }
+
+    @GetMapping("/test-500")
+    public ResponseEntity<Void> test500() {
+        log.info("GET /auth/test-500 - Simulating 500 Internal Server Error");
+        throw new RuntimeException("Simulated 500 Internal Server Error");
+    }
 }

@@ -1,0 +1,36 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: bondhub-cluster-final
+  region: ap-southeast-2
+
+# ĐỂ EKSCTL TỰ ĐẺ VPC VÀ CẤU HÌNH ROUTE chuẩn doanh nghiệp
+vpc:
+  cidr: "10.0.0.0/16"
+  nat:
+    gateway: HighlyAvailable # Tự động tạo NAT Gateway ở Public Subnet cho các Node ngầm đi ra ngoài
+
+managedNodeGroups:
+  - name: ng-0-middleware
+    instanceType: m7i-flex.large
+    desiredCapacity: 1
+    privateNetworking: true # Node chạy trong Private Subnet
+    labels: { node-type: middleware }
+
+  - name: ng-1-infra
+    instanceType: c7i-flex.large
+    desiredCapacity: 1
+    privateNetworking: true
+    labels: { node-type: infra }
+
+  - name: ng-2-core-social
+    instanceType: m7i-flex.large
+    desiredCapacity: 1
+    privateNetworking: true
+    labels: { node-type: core-social }
+
+  - name: ng-3-interaction-ai
+    instanceType: m7i-flex.large
+    desiredCapacity: 1
+    privateNetworking: true
+    labels: { node-type: interaction-ai }

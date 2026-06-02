@@ -3,6 +3,7 @@ package com.bondhub.common.exception;
 import com.bondhub.common.dto.ApiResponse;
 import com.bondhub.common.utils.LocalizationUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -21,6 +22,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.security.access.AccessDeniedException;
 
+@Slf4j
 @RestControllerAdvice
 @RequiredArgsConstructor
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -74,7 +76,7 @@ public class GlobalExceptionHandler {
 
         ErrorCode errorCode = ErrorCode.SYS_UNCATEGORIZED;
 
-        exception.printStackTrace();
+        log.error("System uncategorized exception occurred: ", exception);
 
         String errorKey = errorCode.getMessageKey();
         String errorMessage = localizationUtil.getMessage(errorKey);
