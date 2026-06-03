@@ -99,7 +99,7 @@ class ChatService:
                             yield f"data: {json.dumps(payload.model_dump())}\n\n"
 
                     # Gửi từng phần câu trả lời (ANSWER_CHUNK)
-                    if kind == "on_chat_model_stream":
+                    if kind == "on_chat_model_stream" and node_name in [edges.NODE_GENERATE, edges.NODE_SUMMARIZE]:
                         chunk = event["data"].get("chunk")
                         if chunk and hasattr(chunk, "content") and chunk.content:
                             full_response_accum.append(chunk.content)
