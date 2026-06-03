@@ -18,7 +18,13 @@ logger = logging.getLogger(__name__)
 basic_model = ChatOpenAI(model="gpt-4o-mini", api_key=settings.openai_api_key, temperature=0)
 
 # Premium model for generation and tool calling
-premium_model = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, temperature=0.7, streaming=True)
+premium_model = ChatOpenAI(
+    model="gpt-4o",
+    api_key=settings.openai_api_key,
+    temperature=0.7,
+    streaming=True,
+    stream_options={"include_usage": True}
+)
 premium_with_tools = premium_model.bind_tools(tools)
 
 # Search tool
