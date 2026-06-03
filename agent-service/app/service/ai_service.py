@@ -18,13 +18,19 @@ logger = logging.getLogger(__name__)
 basic_model = ChatOpenAI(model="gpt-4o-mini", api_key=settings.openai_api_key, temperature=0)
 
 # Premium model for generation and tool calling
-premium_model = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key, temperature=0.7, streaming=True)
+premium_model = ChatOpenAI(
+    model="gpt-4o",
+    api_key=settings.openai_api_key,
+    temperature=0.7,
+    streaming=True,
+    stream_options={"include_usage": True}
+)
 premium_with_tools = premium_model.bind_tools(tools)
 
 # Search tool
 tavily_tool = TavilySearchResults(max_results=3, tavily_api_key=settings.tavily_api_key)
 
-async def rewrite_node(state: AgentState):
+async def rewrite_node(state: AgentState, config: RunnableConfig):
     messages = state.get("messages", [])
     # Limit message context based on settings
     limit = settings.chat_history_limit
@@ -44,7 +50,7 @@ async def rewrite_node(state: AgentState):
     logger.info(f"Input Context: {current_msg}")
     
     # Upgrade to premium_model for better accuracy in context merging
-    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=current_msg)])
+    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=current_msg)], config=config)
     rewritten = result.content.strip()
     
     logger.info(f"Final Rewritten Query: {rewritten}")
@@ -52,7 +58,7 @@ async def rewrite_node(state: AgentState):
     
     return {"rewritten_query": rewritten}
 
-async def analyze_node(state: AgentState):
+async def analyze_node(state: AgentState, config: RunnableConfig):
     curr_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # ƯU TIÊN sử dụng rewritten_query (đã được context-aware ở bước trước)
     user_msg = state.get("rewritten_query") or state.get("user_query") or state.get("original_query", "")
@@ -66,7 +72,7 @@ async def analyze_node(state: AgentState):
             current_time=curr_time,
             user_message=state.get("user_query", "") # Ở đây dùng tin nhắn gốc để check đổi ý
         ))
-        switch_result = await premium_model.ainvoke([switch_msg])
+        switch_result = await premium_model.ainvoke([switch_msg], config=config)
         decision = switch_result.content.strip().upper()
         logger.info(f"Intent switch decision: {decision}")
 
@@ -80,7 +86,7 @@ async def analyze_node(state: AgentState):
     sys_msg = SystemMessage(content=ANALYZER_PROMPT.format(current_time=curr_time))
     
     # Gọi premium_model để phân loại token chính xác hơn (Dùng user_msg đã được xử lý)
-    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=user_msg)])
+    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=user_msg)], config=config)
     route = result.content.strip()
     logger.info(f"Router input: {user_msg} | Decision: {route}")
     
@@ -122,7 +128,7 @@ async def retrieve_node(state: AgentState):
         
     return {"context": context or ""}
 
-async def grade_node(state: AgentState):
+async def grade_node(state: AgentState, config: RunnableConfig):
     context = state.get("context", "")
     if not context or context.strip() == "":
         logger.info("--- GRADING: Context is empty. Forcing INCORRECT for Web Search fallback ---")
@@ -132,7 +138,7 @@ async def grade_node(state: AgentState):
     user_query_context = f"Context: {context} | Query: {state.get('rewritten_query')}"
     
     # Use premium model for grading to be more strict
-    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=user_query_context)])
+    result = await premium_model.ainvoke([sys_msg, HumanMessage(content=user_query_context)], config=config)
     grade = result.content.strip().upper()
     logger.info(f"--- GRADER DECISION: {grade} ---")
     
@@ -174,7 +180,7 @@ async def generate_node(state: AgentState, config: RunnableConfig):
     
     return {"messages": [result], "answer": result.content}
 
-async def summarize_node(state: AgentState):
+async def summarize_node(state: AgentState, config: RunnableConfig):
     logger.info("--- AI INTENT: SUMMARIZING CONVERSATION ---")
     
     # 1. Lấy context đã được Controller nạp sẵn
@@ -189,7 +195,7 @@ async def summarize_node(state: AgentState):
     # 3. Gọi model để sinh tóm tắt
     # Ở đây có thể dùng astream nếu muốn stream kết quả, 
     # nhưng để đơn giản và ổn định cho node tổng hợp ta dùng invoke.
-    result = await premium_model.ainvoke([SystemMessage(content=prompt)])
+    result = await premium_model.ainvoke([SystemMessage(content=prompt)], config=config)
     
     return {"answer": result.content, "grade": "COMPLETE"}
 

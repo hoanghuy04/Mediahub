@@ -60,7 +60,7 @@ pipeline {
                 dir('friend-service') {
                     sh 'mvn -f ../pom.xml install -N'
                     sh 'mvn -f ../common/pom.xml clean install -DskipTests'
-                    sh 'mvn clean package -DskipTests'
+                    sh 'mvn clean package'
                 }
             }
         }

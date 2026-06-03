@@ -74,7 +74,12 @@ data:
   GATEWAY_QR_TIMEOUT_MS: "45000"
 
   # Langchain
-  LANGCHAIN_TRACING_V2: "false"
+  LANGCHAIN_TRACING_V2: "true"
+  LANGCHAIN_ENDPOINT: "https://api.smith.langchain.com"
+  LANGCHAIN_PROJECT: "bondhub-ai-agent"
+  LANGSMITH_TRACING: "true"
+  LANGSMITH_ENDPOINT: "https://api.smith.langchain.com"
+  LANGSMITH_PROJECT: "bondhub-ai-agent"
 
   # ZegoCloud
   ZEGO_APP_ID: "1404011031"

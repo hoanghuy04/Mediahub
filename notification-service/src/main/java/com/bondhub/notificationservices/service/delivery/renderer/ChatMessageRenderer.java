@@ -25,7 +25,7 @@ public class ChatMessageRenderer implements NotificationRenderer {
         if (snippetsObj instanceof java.util.List<?> snippets && !snippets.isEmpty()) {
             var lines = snippets.stream()
                     .map(Object::toString)
-                    .map(line -> rebuildMediaLabel(line, notification, locale))
+                    .map(line -> processChatContent(line, notification, locale))
                     .map(line -> line.replaceAll("\\s+", " ").trim())
                     .filter(line -> !line.isEmpty())
                     .toList();
@@ -66,6 +66,24 @@ public class ChatMessageRenderer implements NotificationRenderer {
         }
     }
 
+    private String processChatContent(String line, Notification notification, String locale) {
+        if (line == null) return line;
+        int groupCallIndex = line.indexOf("[GROUP_CALL]::");
+        if (groupCallIndex != -1) {
+            String prefix = line.substring(0, groupCallIndex);
+            String payloadStr = line.substring(groupCallIndex + "[GROUP_CALL]::".length());
+            boolean isEn = "en".equalsIgnoreCase(locale);
+            String statusMsg = isEn ? "Group call" : "Cuộc gọi nhóm";
+            if (payloadStr.contains("\"active\"") || payloadStr.contains("'active'")) {
+               statusMsg = isEn ? "Ongoing group call..." : "Cuộc gọi nhóm đang diễn ra...";
+            } else if (payloadStr.contains("\"ended\"") || payloadStr.contains("'ended'")) {
+               statusMsg = isEn ? "Group call ended" : "Cuộc gọi nhóm đã kết thúc";
+            }
+            return prefix + statusMsg;
+        }
+        return rebuildMediaLabel(line, notification, locale);
+    }
+
     private String rebuildMediaLabel(String line, Notification notification, String locale) {
         if (line == null || !line.matches(".*\\[.*?(?:Photo|Ảnh|Video|video|Other).*?\\].*")) {
             return line;
@@ -87,11 +105,11 @@ public class ChatMessageRenderer implements NotificationRenderer {
     private String getLocalizedContent(Notification notification, String locale) {
         String localized = getString(notification, "en".equalsIgnoreCase(locale) ? "contentEn" : "contentVi");
         if (localized != null && !localized.isBlank()) {
-            return rebuildMediaLabel(localized, notification, locale);
+            return processChatContent(localized, notification, locale);
         }
         String fallback = getString(notification, "content");
         if (fallback != null && !fallback.isBlank()) {
-            return rebuildMediaLabel(fallback, notification, locale);
+            return processChatContent(fallback, notification, locale);
         }
         return fallback;
     }
